@@ -3,138 +3,152 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>情侣飞行棋 · 暧昧升级版（含惩罚卡）💞</title>
+  <title>美股选股器 · 技术面筛选</title>
   <style>
-    body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;display:flex;justify-content:center;align-items:center;min-height:100vh}
-    .app{background:#020617;border-radius:16px;padding:16px;width:360px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
-    h1{margin:0 0 8px 0;font-size:20px;text-align:center}
-    .hint{font-size:12px;opacity:.9;text-align:center;margin-bottom:8px}
-    .board{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:12px 0}
-    .cell{aspect-ratio:1;border:1px solid #1e293b;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;position:relative}
-    .cell.finish{background:#022c22;border-color:#14532d}
-    .cell.punish{outline:2px dashed #fb7185}
-    .token{width:16px;height:16px;border-radius:50%;position:absolute}
-    .a{background:#38bdf8}
-    .b{background:#f472b6}
-    .controls{display:flex;gap:8px}
-    button{flex:1;padding:10px;border-radius:8px;border:none;background:#38bdf8;color:#020617;font-weight:bold;cursor:pointer}
-    .status{margin-top:8px;font-size:13px;text-align:center}
-    .card{margin-top:8px;padding:8px;border-radius:8px;background:#020617;border:1px solid #1e293b;font-size:12px}
-    .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#fb7185;color:#020617;font-weight:700;font-size:10px;margin-left:6px}
+    body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:16px}
+    .app{background:#020617;border-radius:16px;padding:16px;width:100%;max-width:920px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+    h1{margin:0 0 8px 0;font-size:22px;text-align:center}
+    .hint{font-size:12px;opacity:.85;text-align:center;margin-bottom:12px}
+    .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+    textarea,input,button{background:#020617;color:#e5e7eb;border:1px solid #1e293b;border-radius:8px;padding:10px}
+    button{background:#38bdf8;color:#020617;font-weight:700;cursor:pointer}
+    .row{display:flex;gap:8px}
+    .row>div{flex:1}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border-bottom:1px solid #1e293b;padding:8px;font-size:12px;text-align:left}
+    th{opacity:.8}
+    .ok{color:#34d399}
+    .bad{color:#f87171}
+    .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#1e293b;font-size:10px;margin-left:6px}
+    .foot{font-size:11px;opacity:.7;margin-top:8px}
   </style>
 </head>
 <body>
   <div class="app">
-    <h1>✈️ 情侣飞行棋 · 暧昧升级</h1>
-    <div class="hint">仅限成年人。暗示氛围 + 惩罚卡（不露骨）💗</div>
-    <div id="board" class="board"></div>
+    <h1>📈 美股选股器（技术面）</h1>
+    <div class="hint">条件：日线 MACD 接近零轴｜收盘价接近 EMA52｜KDJ 的 J &lt; 10｜市值 &gt; 50 亿美元</div>
+
     <div class="controls">
-      <button id="roll">掷骰子 🎲</button>
-      <button id="reset" style="background:#64748b">重来</button>
+      <textarea id="symbols" rows="4" placeholder="输入美股代码（逗号或换行分隔），例如：\nAAPL, MSFT, NVDA, TSLA"></textarea>
+      <div>
+        <div class="row">
+          <div>
+            <label>MACD 距离零轴阈值</label>
+            <input id="macdThr" type="number" step="0.01" value="0.1" />
+          </div>
+          <div>
+            <label>价格接近 EMA52 (%)</label>
+            <input id="emaPct" type="number" step="0.1" value="2" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div>
+            <label>J 值上限</label>
+            <input id="jMax" type="number" value="10" />
+          </div>
+          <div>
+            <label>最小市值（十亿美元）</label>
+            <input id="mcapMin" type="number" value="5" />
+          </div>
+        </div>
+        <button id="run" style="margin-top:8px;width:100%">开始筛选</button>
+      </div>
     </div>
-    <div id="status" class="status"></div>
-    <div id="card" class="card">事件/惩罚卡将在这里显示</div>
+
+    <table id="table">
+      <thead>
+        <tr>
+          <th>代码</th><th>收盘价</th><th>EMA52</th><th>MACD</th><th>J</th><th>市值(十亿美元)</th><th>结果</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="foot">数据源：Yahoo Finance（无 Key 的公共接口，可能存在限流）。仅作研究与演示，不构成投资建议。</div>
   </div>
 
 <script>
-const SIZE = 30; // 6x5
-// 事件（暧昧推进）
-const events = {
-  2:  { text: '目光纠缠，距离被悄悄拉近… 😌 前进 +1', move:+1 },
-  4:  { text: '耳边低语，气息拂过，心跳失序 💓 前进 +1', move:+1 },
-  6:  { text: '轻触停留得久了一点点… 🔥 前进 +2', move:+2 },
-  9:  { text: '暧昧笑意，时间像被按下暂停键 💋 跳到 12', jump:12 },
-  12: { text: '手指交扣，呼吸同步，继续升温 💞 再前进 +1', move:+1 },
-  14: { text: '太撩人被逗笑，稍作退让 😏 后退 1', move:-1 },
-  17: { text: '靠得更近，世界只剩彼此的存在 🌙 前进 +2', move:+2 },
-  20: { text: '暧昧拉扯，欲进还退，重新酝酿 😈 回到 18', jump:18 },
-  23: { text: '眼神点火，气氛高涨，顺势推进 🔥 前进 +3', move:+3 }
+// ===== 技术指标计算 =====
+function EMA(values, period){
+  const k = 2/(period+1);
+  let ema = values[0];
+  for(let i=1;i<values.length;i++) ema = values[i]*k + ema*(1-k);
+  return ema;
+}
+function MACD(close){
+  const ema12 = EMA(close.slice(-26), 12);
+  const ema26 = EMA(close.slice(-26), 26);
+  return ema12 - ema26; // 简化版：只看 DIF
+}
+function KDJ(high, low, close, n=9){
+  const hs = high.slice(-n);
+  const ls = low.slice(-n);
+  const c = close[close.length-1];
+  const hh = Math.max(...hs);
+  const ll = Math.min(...ls);
+  const rsv = (c-ll)/(hh-ll)*100;
+  let k = 2/3*50 + 1/3*rsv;
+  let d = 2/3*50 + 1/3*k;
+  let j = 3*k - 2*d;
+  return {k,d,j};
+}
+
+// ===== 数据获取（Yahoo Finance） =====
+async function fetchDaily(symbol){
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('chart failed');
+  const j = await r.json();
+  const res = j.chart.result[0];
+  const q = res.indicators.quote[0];
+  return {
+    close: q.close.filter(Boolean),
+    high: q.high.filter(Boolean),
+    low: q.low.filter(Boolean)
+  };
+}
+async function fetchMcap(symbol){
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('mcap failed');
+  const j = await r.json();
+  const p = j.quoteSummary.result[0].price;
+  return p.marketCap?.raw ? p.marketCap.raw/1e9 : null;
+}
+
+function near(a,b,pct){ return Math.abs(a-b)/b*100 <= pct; }
+
+const tbody = document.querySelector('#table tbody');
+
+document.getElementById('run').onclick = async ()=>{
+  tbody.innerHTML='';
+  const syms = document.getElementById('symbols').value.split(/[,\n\s]+/).map(s=>s.trim()).filter(Boolean);
+  const macdThr = parseFloat(document.getElementById('macdThr').value);
+  const emaPct = parseFloat(document.getElementById('emaPct').value);
+  const jMax = parseFloat(document.getElementById('jMax').value);
+  const mcapMin = parseFloat(document.getElementById('mcapMin').value);
+
+  for(const s of syms){
+    try{
+      const [ohlc, mcap] = await Promise.all([fetchDaily(s), fetchMcap(s)]);
+      const close = ohlc.close;
+      const ema52 = EMA(close.slice(-52), 52);
+      const macd = MACD(close);
+      const {j} = KDJ(ohlc.high, ohlc.low, close);
+      const last = close[close.length-1];
+
+      const ok = Math.abs(macd) <= macdThr && near(last, ema52, emaPct) && j < jMax && (mcap ?? 0) >= mcapMin;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${s}</td><td>${last.toFixed(2)}</td><td>${ema52.toFixed(2)}</td><td>${macd.toFixed(3)}</td><td>${j.toFixed(1)}</td><td>${mcap?mcap.toFixed(1):'—'}</td><td class="${ok?'ok':'bad'}">${ok?'通过':'未通过'}</td>`;
+      tbody.appendChild(tr);
+    }catch(e){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${s}</td><td colspan="6" class="bad">数据获取失败</td>`;
+      tbody.appendChild(tr);
+    }
+  }
 };
-
-// 惩罚卡（不露骨，带点撩）
-const punishCards = [
-  '闭眼 10 秒，只用声音交流 😶‍🌫️',
-  '靠近一点，保持目光 15 秒 👀',
-  '低声说一句暧昧的话（自定）💬',
-  '轻轻拥抱 20 秒，不说话 🤍',
-  '交换一个秘密表情 😏',
-  '选择一首暧昧的歌，下一回合结束前播放 🎶',
-  '暂停动作 10 秒，制造期待 ⏳'
-];
-
-// 标记惩罚格（踩中必抽）
-const punishCells = new Set([5, 11, 16, 21, 26]);
-
-let state = JSON.parse(localStorage.getItem('couple-flight')) || { turn:'A', A:0, B:0, finished:false };
-
-const board = document.getElementById('board');
-const statusEl = document.getElementById('status');
-const cardEl = document.getElementById('card');
-
-function save(){ localStorage.setItem('couple-flight', JSON.stringify(state)); }
-
-function buildBoard(){
-  board.innerHTML='';
-  for(let i=1;i<=SIZE;i++){
-    const c=document.createElement('div');
-    c.className='cell'+(i===SIZE?' finish':'')+(punishCells.has(i)?' punish':'');
-    c.textContent=i;
-    c.id='cell-'+i;
-    board.appendChild(c);
-  }
-}
-
-function placeTokens(){
-  document.querySelectorAll('.token').forEach(t=>t.remove());
-  if(state.A>0){ const t=document.createElement('div'); t.className='token a'; document.getElementById('cell-'+state.A)?.appendChild(t);} 
-  if(state.B>0){ const t=document.createElement('div'); t.className='token b'; document.getElementById('cell-'+state.B)?.appendChild(t);} 
-}
-
-function drawPunish(){
-  const pick = punishCards[Math.floor(Math.random()*punishCards.length)];
-  cardEl.innerHTML = `${pick} <span class="pill">惩罚卡</span>`;
-}
-
-function applyEvent(player){
-  const pos = state[player];
-  if(punishCells.has(pos)){
-    drawPunish();
-    return; // 惩罚卡不叠加位移
-  }
-  const ev = events[pos];
-  if(ev){
-    cardEl.textContent = ev.text;
-    if(typeof ev.move==='number') state[player]+=ev.move;
-    if(typeof ev.jump==='number') state[player]=ev.jump;
-  } else {
-    cardEl.textContent = '暧昧在空气中蔓延… 💫 继续前进';
-  }
-}
-
-function update(){
-  placeTokens();
-  if(state.finished){ statusEl.textContent='游戏结束'; return; }
-  statusEl.textContent = `轮到 ${state.turn==='A'?'你':'TA'} 掷骰子`;
-  save();
-}
-
-function roll(){
-  if(state.finished) return;
-  const dice = Math.ceil(Math.random()*6);
-  const p = state.turn;
-  state[p] += dice;
-  if(state[p] >= SIZE){ state[p]=SIZE; state.finished=true; cardEl.textContent = `${p==='A'?'你':'TA'} 抵达终点，夜色正好… 🎉`; update(); return; }
-  applyEvent(p);
-  state.turn = p==='A'?'B':'A';
-  update();
-}
-
-function reset(){ state={turn:'A',A:0,B:0,finished:false}; save(); buildBoard(); update(); }
-
-document.getElementById('roll').onclick=roll;
-document.getElementById('reset').onclick=reset;
-
-buildBoard(); update();
 </script>
 </body>
 </html>
