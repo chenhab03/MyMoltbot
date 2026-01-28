@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibe Todo</title>
+  <style>
+    body { font-family: system-ui, -apple-system; background:#0f172a; color:#e5e7eb; display:flex; justify-content:center; align-items:center; height:100vh; }
+    .app { background:#020617; padding:24px; border-radius:16px; width:320px; box-shadow:0 20px 40px rgba(0,0,0,.4);}    
+    h1 { margin-top:0; font-size:20px; }
+    input { width:100%; padding:10px; border-radius:8px; border:none; margin-bottom:12px; }
+    button { width:100%; padding:10px; border-radius:8px; border:none; background:#38bdf8; color:#020617; font-weight:bold; cursor:pointer; }
+    ul { list-style:none; padding:0; margin:12px 0 0 0; }
+    li { background:#020617; border:1px solid #1e293b; padding:8px; border-radius:8px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
+    li.done { text-decoration:line-through; opacity:.5; }
+    .x { cursor:pointer; color:#f87171; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>✅ Vibe Todo</h1>
+    <input id="todoInput" placeholder="要做什么？" />
+    <button onclick="addTodo()">添加</button>
+    <ul id="list"></ul>
+  </div>
+
+  <script>
+    const input = document.getElementById('todoInput');
+    const list = document.getElementById('list');
+    const storeKey = 'vibe-todos';
+
+    function save() {
+      const todos = [...list.children].map(li => ({
+        text: li.querySelector('span').innerText,
+        done: li.classList.contains('done')
+      }));
+      localStorage.setItem(storeKey, JSON.stringify(todos));
+    }
+
+    function load() {
+      const todos = JSON.parse(localStorage.getItem(storeKey) || '[]');
+      todos.forEach(t => createTodo(t.text, t.done));
+    }
+
+    function createTodo(text, done=false) {
+      const li = document.createElement('li');
+      if (done) li.classList.add('done');
+      li.innerHTML = `<span>${text}</span><span class="x">✕</span>`;
+      li.onclick = () => { li.classList.toggle('done'); save(); };
+      li.querySelector('.x').onclick = (e) => { e.stopPropagation(); li.remove(); save(); };
+      list.appendChild(li);
+    }
+
+    function addTodo() {
+      if (!input.value.trim()) return;
+      createTodo(input.value);
+      input.value = '';
+      save();
+    }
+
+    load();
+  </script>
+</body>
+</html>
