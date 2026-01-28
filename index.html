@@ -3,152 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>美股选股器 · 技术面筛选</title>
+  <title>美股选股器 · SPY 自动成分股</title>
   <style>
     body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:16px}
-    .app{background:#020617;border-radius:16px;padding:16px;width:100%;max-width:920px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+    .app{background:#020617;border-radius:16px;padding:16px;width:100%;max-width:980px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
     h1{margin:0 0 8px 0;font-size:22px;text-align:center}
     .hint{font-size:12px;opacity:.85;text-align:center;margin-bottom:12px}
     .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-    textarea,input,button{background:#020617;color:#e5e7eb;border:1px solid #1e293b;border-radius:8px;padding:10px}
+    input,button{background:#020617;color:#e5e7eb;border:1px solid #1e293b;border-radius:8px;padding:10px}
     button{background:#38bdf8;color:#020617;font-weight:700;cursor:pointer}
-    .row{display:flex;gap:8px}
-    .row>div{flex:1}
     table{width:100%;border-collapse:collapse;margin-top:12px}
     th,td{border-bottom:1px solid #1e293b;padding:8px;font-size:12px;text-align:left}
     th{opacity:.8}
     .ok{color:#34d399}
     .bad{color:#f87171}
-    .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#1e293b;font-size:10px;margin-left:6px}
     .foot{font-size:11px;opacity:.7;margin-top:8px}
   </style>
 </head>
 <body>
   <div class="app">
-    <h1>📈 美股选股器（技术面）</h1>
-    <div class="hint">条件：日线 MACD 接近零轴｜收盘价接近 EMA52｜KDJ 的 J &lt; 10｜市值 &gt; 50 亿美元</div>
+    <h1>📈 美股选股器（SPY 自动成分股）</h1>
+    <div class="hint">自动加载 SPY（≈ 标普 500）全部成分股并筛选：MACD≈0｜价格≈EMA52｜J&lt;10｜市值&gt;50 亿美元</div>
 
     <div class="controls">
-      <textarea id="symbols" rows="4" placeholder="输入美股代码（逗号或换行分隔），例如：\nAAPL, MSFT, NVDA, TSLA"></textarea>
       <div>
-        <div class="row">
-          <div>
-            <label>MACD 距离零轴阈值</label>
-            <input id="macdThr" type="number" step="0.01" value="0.1" />
-          </div>
-          <div>
-            <label>价格接近 EMA52 (%)</label>
-            <input id="emaPct" type="number" step="0.1" value="2" />
-          </div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <div>
-            <label>J 值上限</label>
-            <input id="jMax" type="number" value="10" />
-          </div>
-          <div>
-            <label>最小市值（十亿美元）</label>
-            <input id="mcapMin" type="number" value="5" />
-          </div>
-        </div>
-        <button id="run" style="margin-top:8px;width:100%">开始筛选</button>
+        <label>MACD 距离零轴阈值</label>
+        <input id="macdThr" type="number" step="0.01" value="0.1" />
+      </div>
+      <div>
+        <label>价格接近 EMA52 (%)</label>
+        <input id="emaPct" type="number" step="0.1" value="2" />
+      </div>
+      <div>
+        <label>J 值上限</label>
+        <input id="jMax" type="number" value="10" />
+      </div>
+      <div>
+        <label>最小市值（十亿美元）</label>
+        <input id="mcapMin" type="number" value="5" />
+      </div>
+      <div style="grid-column:1/3">
+        <button id="run">自动加载 SPY 成分股并筛选</button>
       </div>
     </div>
 
-    <table id="table">
+    <table>
       <thead>
         <tr>
           <th>代码</th><th>收盘价</th><th>EMA52</th><th>MACD</th><th>J</th><th>市值(十亿美元)</th><th>结果</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="tbody"></tbody>
     </table>
 
-    <div class="foot">数据源：Yahoo Finance（无 Key 的公共接口，可能存在限流）。仅作研究与演示，不构成投资建议。</div>
+    <div class="foot">说明：SPY ≈ 标普 500。成分股来源：Wikipedia（前端抓取）。Yahoo Finance 公共接口可能限流，首次加载较慢。</div>
   </div>
 
 <script>
-// ===== 技术指标计算 =====
-function EMA(values, period){
-  const k = 2/(period+1);
-  let ema = values[0];
-  for(let i=1;i<values.length;i++) ema = values[i]*k + ema*(1-k);
-  return ema;
-}
-function MACD(close){
-  const ema12 = EMA(close.slice(-26), 12);
-  const ema26 = EMA(close.slice(-26), 26);
-  return ema12 - ema26; // 简化版：只看 DIF
-}
-function KDJ(high, low, close, n=9){
-  const hs = high.slice(-n);
-  const ls = low.slice(-n);
-  const c = close[close.length-1];
-  const hh = Math.max(...hs);
-  const ll = Math.min(...ls);
-  const rsv = (c-ll)/(hh-ll)*100;
-  let k = 2/3*50 + 1/3*rsv;
-  let d = 2/3*50 + 1/3*k;
-  let j = 3*k - 2*d;
-  return {k,d,j};
-}
+// ===== 指标 =====
+function EMA(values, period){ const k=2/(period+1); let ema=values[0]; for(let i=1;i<values.length;i++) ema=values[i]*k+ema*(1-k); return ema; }
+function MACD(close){ const ema12=EMA(close.slice(-26),12); const ema26=EMA(close.slice(-26),26); return ema12-ema26; }
+function KDJ(high, low, close, n=9){ const hs=high.slice(-n); const ls=low.slice(-n); const c=close[close.length-1]; const hh=Math.max(...hs); const ll=Math.min(...ls); const rsv=(c-ll)/(hh-ll)*100; let k=2/3*50+1/3*rsv; let d=2/3*50+1/3*k; let j=3*k-2*d; return {j}; }
+function near(a,b,pct){ return Math.abs(a-b)/b*100<=pct; }
 
-// ===== 数据获取（Yahoo Finance） =====
+// ===== 数据源 =====
+async function fetchSPY(){
+  const url='https://en.wikipedia.org/wiki/List_of_S%26P_500_companies';
+  const html=await (await fetch(url)).text();
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const rows=[...doc.querySelectorAll('table.wikitable tbody tr')];
+  return rows.map(r=>r.children[0].textContent.trim()).filter(Boolean);
+}
 async function fetchDaily(symbol){
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
-  const r = await fetch(url);
-  if(!r.ok) throw new Error('chart failed');
-  const j = await r.json();
-  const res = j.chart.result[0];
-  const q = res.indicators.quote[0];
-  return {
-    close: q.close.filter(Boolean),
-    high: q.high.filter(Boolean),
-    low: q.low.filter(Boolean)
-  };
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
+  const j=await (await fetch(url)).json();
+  const res=j.chart.result[0]; const q=res.indicators.quote[0];
+  return { close:q.close.filter(Boolean), high:q.high.filter(Boolean), low:q.low.filter(Boolean) };
 }
 async function fetchMcap(symbol){
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price`;
-  const r = await fetch(url);
-  if(!r.ok) throw new Error('mcap failed');
-  const j = await r.json();
-  const p = j.quoteSummary.result[0].price;
-  return p.marketCap?.raw ? p.marketCap.raw/1e9 : null;
+  const url=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price`;
+  const j=await (await fetch(url)).json();
+  const p=j.quoteSummary.result[0].price; return p.marketCap?.raw? p.marketCap.raw/1e9:null;
 }
 
-function near(a,b,pct){ return Math.abs(a-b)/b*100 <= pct; }
+const tbody=document.getElementById('tbody');
 
-const tbody = document.querySelector('#table tbody');
-
-document.getElementById('run').onclick = async ()=>{
+document.getElementById('run').onclick=async()=>{
+  tbody.innerHTML='<tr><td colspan="7">加载 SPY 成分股中，请稍候…</td></tr>';
+  const syms=await fetchSPY();
   tbody.innerHTML='';
-  const syms = document.getElementById('symbols').value.split(/[,\n\s]+/).map(s=>s.trim()).filter(Boolean);
-  const macdThr = parseFloat(document.getElementById('macdThr').value);
-  const emaPct = parseFloat(document.getElementById('emaPct').value);
-  const jMax = parseFloat(document.getElementById('jMax').value);
-  const mcapMin = parseFloat(document.getElementById('mcapMin').value);
-
+  const macdThr=parseFloat(macdThrEl.value); const emaPct=parseFloat(emaPctEl.value); const jMax=parseFloat(jMaxEl.value); const mcapMin=parseFloat(mcapMinEl.value);
   for(const s of syms){
     try{
-      const [ohlc, mcap] = await Promise.all([fetchDaily(s), fetchMcap(s)]);
-      const close = ohlc.close;
-      const ema52 = EMA(close.slice(-52), 52);
-      const macd = MACD(close);
-      const {j} = KDJ(ohlc.high, ohlc.low, close);
-      const last = close[close.length-1];
-
-      const ok = Math.abs(macd) <= macdThr && near(last, ema52, emaPct) && j < jMax && (mcap ?? 0) >= mcapMin;
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${s}</td><td>${last.toFixed(2)}</td><td>${ema52.toFixed(2)}</td><td>${macd.toFixed(3)}</td><td>${j.toFixed(1)}</td><td>${mcap?mcap.toFixed(1):'—'}</td><td class="${ok?'ok':'bad'}">${ok?'通过':'未通过'}</td>`;
+      const [ohlc,mcap]=await Promise.all([fetchDaily(s), fetchMcap(s)]);
+      const close=ohlc.close; const ema52=EMA(close.slice(-52),52); const macd=MACD(close); const {j}=KDJ(ohlc.high,ohlc.low,close); const last=close[close.length-1];
+      const ok=Math.abs(macd)<=macdThr && near(last,ema52,emaPct) && j<jMax && (mcap??0)>=mcapMin;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${s}</td><td>${last.toFixed(2)}</td><td>${ema52.toFixed(2)}</td><td>${macd.toFixed(3)}</td><td>${j.toFixed(1)}</td><td>${mcap?mcap.toFixed(1):'—'}</td><td class="${ok?'ok':'bad'}">${ok?'通过':'未通过'}</td>`;
       tbody.appendChild(tr);
-    }catch(e){
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${s}</td><td colspan="6" class="bad">数据获取失败</td>`;
-      tbody.appendChild(tr);
-    }
+    }catch(e){/* 忽略失败 */}
   }
 };
+
+const macdThrEl=document.getElementById('macdThr');
+const emaPctEl=document.getElementById('emaPct');
+const jMaxEl=document.getElementById('jMax');
+const mcapMinEl=document.getElementById('mcapMin');
 </script>
 </body>
 </html>
