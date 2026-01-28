@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>情侣飞行棋 · 成人暧昧版 💕</title>
+  <title>情侣飞行棋 · 暧昧升级版 💞</title>
   <style>
     body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;display:flex;justify-content:center;align-items:center;min-height:100vh}
     .app{background:#020617;border-radius:16px;padding:16px;width:360px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
     h1{margin:0 0 8px 0;font-size:20px;text-align:center}
-    .hint{font-size:12px;opacity:.85;text-align:center;margin-bottom:8px}
+    .hint{font-size:12px;opacity:.9;text-align:center;margin-bottom:8px}
     .board{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:12px 0}
     .cell{aspect-ratio:1;border:1px solid #1e293b;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;position:relative}
     .cell.finish{background:#022c22;border-color:#14532d}
@@ -23,8 +23,8 @@
 </head>
 <body>
   <div class="app">
-    <h1>✈️ 情侣飞行棋 · 成人暧昧</h1>
-    <div class="hint">仅限成年人。用暗示与氛围推进亲密感 💗</div>
+    <h1>✈️ 情侣飞行棋 · 暧昧升级</h1>
+    <div class="hint">仅限成年人。更暧昧的暗示与氛围，但不露骨 💗</div>
     <div id="board" class="board"></div>
     <div class="controls">
       <button id="roll">掷骰子 🎲</button>
@@ -36,14 +36,17 @@
 
 <script>
 const SIZE = 30; // 6x5
-// 成人暧昧事件：强烈暗示、不直接描写性行为
+// 更暧昧：加重张力、靠近、低语、身体距离等暗示（不描写具体性行为）
 const events = {
-  3:  { text: '灯光变暗，慢慢靠近，呼吸交错… 🔥 前进 +1', move: +1 },
-  6:  { text: '温柔触碰，气氛升温，心跳加速 💓 前进 +2', move: +2 },
-  9:  { text: '暧昧低语，时间暂停，直接跳到 12 💋', jump: 12 },
-  14: { text: '太心急被逗笑，稍微冷静一下 😏 后退 1', move: -1 },
-  18: { text: '私密空间，贴得更近，情绪高涨 🌙 前进 +3', move: +3 },
-  22: { text: '欲擒故纵，回到 20，重新点燃火花 😈', jump: 20 }
+  2:  { text: '目光纠缠，距离被悄悄拉近… 😌 前进 +1', move:+1 },
+  4:  { text: '耳边低语，气息拂过，心跳失序 💓 前进 +1', move:+1 },
+  6:  { text: '轻触停留得久了一点点… 🔥 前进 +2', move:+2 },
+  9:  { text: '暧昧笑意，时间像被按下暂停键 💋 跳到 12', jump:12 },
+  12: { text: '手指交扣，呼吸同步，继续升温 💞 再前进 +1', move:+1 },
+  14: { text: '太撩人被逗笑，稍作退让 😏 后退 1', move:-1 },
+  17: { text: '靠得更近，世界只剩彼此的存在 🌙 前进 +2', move:+2 },
+  20: { text: '暧昧拉扯，欲进还退，重新酝酿 😈 回到 18', jump:18 },
+  23: { text: '眼神点火，气氛高涨，顺势推进 🔥 前进 +3', move:+3 }
 };
 
 let state = JSON.parse(localStorage.getItem('couple-flight')) || { turn:'A', A:0, B:0, finished:false };
@@ -79,7 +82,7 @@ function applyEvent(player){
     if(typeof ev.move==='number') state[player]+=ev.move;
     if(typeof ev.jump==='number') state[player]=ev.jump;
   } else {
-    cardEl.textContent = '气氛持续升温… 💫 继续前进';
+    cardEl.textContent = '暧昧在空气中蔓延… 💫 继续前进';
   }
 }
 
@@ -95,7 +98,7 @@ function roll(){
   const dice = Math.ceil(Math.random()*6);
   const p = state.turn;
   state[p] += dice;
-  if(state[p] >= SIZE){ state[p]=SIZE; state.finished=true; cardEl.textContent = `${p==='A'?'你':'TA'} 抵达终点，夜色正浓… 🎉`; update(); return; }
+  if(state[p] >= SIZE){ state[p]=SIZE; state.finished=true; cardEl.textContent = `${p==='A'?'你':'TA'} 抵达终点，夜色正好… 🎉`; update(); return; }
   applyEvent(p);
   state.turn = p==='A'?'B':'A';
   update();
