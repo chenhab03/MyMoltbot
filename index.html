@@ -3,62 +3,117 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vibe Todo</title>
+  <title>情侣飞行棋 💕</title>
   <style>
-    body { font-family: system-ui, -apple-system; background:#0f172a; color:#e5e7eb; display:flex; justify-content:center; align-items:center; height:100vh; }
-    .app { background:#020617; padding:24px; border-radius:16px; width:320px; box-shadow:0 20px 40px rgba(0,0,0,.4);}    
-    h1 { margin-top:0; font-size:20px; }
-    input { width:100%; padding:10px; border-radius:8px; border:none; margin-bottom:12px; }
-    button { width:100%; padding:10px; border-radius:8px; border:none; background:#38bdf8; color:#020617; font-weight:bold; cursor:pointer; }
-    ul { list-style:none; padding:0; margin:12px 0 0 0; }
-    li { background:#020617; border:1px solid #1e293b; padding:8px; border-radius:8px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
-    li.done { text-decoration:line-through; opacity:.5; }
-    .x { cursor:pointer; color:#f87171; }
+    body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;display:flex;justify-content:center;align-items:center;min-height:100vh}
+    .app{background:#020617;border-radius:16px;padding:16px;width:360px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+    h1{margin:0 0 8px 0;font-size:20px;text-align:center}
+    .hint{font-size:12px;opacity:.8;text-align:center;margin-bottom:8px}
+    .board{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:12px 0}
+    .cell{aspect-ratio:1;border:1px solid #1e293b;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;position:relative}
+    .cell.finish{background:#022c22;border-color:#14532d}
+    .token{width:16px;height:16px;border-radius:50%;position:absolute}
+    .a{background:#38bdf8}
+    .b{background:#f472b6}
+    .controls{display:flex;gap:8px}
+    button{flex:1;padding:10px;border-radius:8px;border:none;background:#38bdf8;color:#020617;font-weight:bold;cursor:pointer}
+    .status{margin-top:8px;font-size:13px;text-align:center}
+    .card{margin-top:8px;padding:8px;border-radius:8px;background:#020617;border:1px solid #1e293b;font-size:12px}
   </style>
 </head>
 <body>
   <div class="app">
-    <h1>✅ Vibe Todo</h1>
-    <input id="todoInput" placeholder="要做什么？" />
-    <button onclick="addTodo()">添加</button>
-    <ul id="list"></ul>
+    <h1>✈️ 情侣飞行棋</h1>
+    <div class="hint">轮流掷骰子，先到终点者获胜。途中有甜蜜事件 💖</div>
+    <div id="board" class="board"></div>
+    <div class="controls">
+      <button id="roll">掷骰子 🎲</button>
+      <button id="reset" style="background:#64748b">重来</button>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="card" class="card">事件卡将在这里显示</div>
   </div>
 
-  <script>
-    const input = document.getElementById('todoInput');
-    const list = document.getElementById('list');
-    const storeKey = 'vibe-todos';
+<script>
+const SIZE = 30; // 6x5
+const events = {
+  3: '牵手前进 +1',
+  6: '拥抱一下，再走 +2',
+  9: '甜蜜回忆，跳到 12',
+  14:'小争执，后退 1',
+  18:'惊喜约会，前进 3',
+  22:'迷路了，回到 20'
+};
 
-    function save() {
-      const todos = [...list.children].map(li => ({
-        text: li.querySelector('span').innerText,
-        done: li.classList.contains('done')
-      }));
-      localStorage.setItem(storeKey, JSON.stringify(todos));
-    }
+let state = JSON.parse(localStorage.getItem('couple-flight')) || {
+  turn: 'A',
+  A: 0,
+  B: 0,
+  finished: false
+};
 
-    function load() {
-      const todos = JSON.parse(localStorage.getItem(storeKey) || '[]');
-      todos.forEach(t => createTodo(t.text, t.done));
-    }
+const board = document.getElementById('board');
+const statusEl = document.getElementById('status');
+const cardEl = document.getElementById('card');
 
-    function createTodo(text, done=false) {
-      const li = document.createElement('li');
-      if (done) li.classList.add('done');
-      li.innerHTML = `<span>${text}</span><span class="x">✕</span>`;
-      li.onclick = () => { li.classList.toggle('done'); save(); };
-      li.querySelector('.x').onclick = (e) => { e.stopPropagation(); li.remove(); save(); };
-      list.appendChild(li);
-    }
+function save(){ localStorage.setItem('couple-flight', JSON.stringify(state)); }
 
-    function addTodo() {
-      if (!input.value.trim()) return;
-      createTodo(input.value);
-      input.value = '';
-      save();
-    }
+function buildBoard(){
+  board.innerHTML='';
+  for(let i=1;i<=SIZE;i++){
+    const c=document.createElement('div');
+    c.className='cell'+(i===SIZE?' finish':'');
+    c.textContent=i;
+    c.id='cell-'+i;
+    board.appendChild(c);
+  }
+}
 
-    load();
-  </script>
+function placeTokens(){
+  document.querySelectorAll('.token').forEach(t=>t.remove());
+  if(state.A>0){ const t=document.createElement('div'); t.className='token a'; document.getElementById('cell-'+state.A)?.appendChild(t);} 
+  if(state.B>0){ const t=document.createElement('div'); t.className='token b'; document.getElementById('cell-'+state.B)?.appendChild(t);} 
+}
+
+function applyEvent(player){
+  const pos = state[player];
+  if(events[pos]){
+    cardEl.textContent = events[pos];
+    if(pos===3) state[player]+=1;
+    if(pos===6) state[player]+=2;
+    if(pos===9) state[player]=12;
+    if(pos===14) state[player]-=1;
+    if(pos===18) state[player]+=3;
+    if(pos===22) state[player]=20;
+  } else {
+    cardEl.textContent = '没有事件，继续前进 💫';
+  }
+}
+
+function update(){
+  placeTokens();
+  if(state.finished){ statusEl.textContent='游戏结束'; return; }
+  statusEl.textContent = `轮到 ${state.turn==='A'?'你':'TA'} 掷骰子`;
+  save();
+}
+
+function roll(){
+  if(state.finished) return;
+  const dice = Math.ceil(Math.random()*6);
+  const p = state.turn;
+  state[p] += dice;
+  if(state[p] >= SIZE){ state[p]=SIZE; state.finished=true; cardEl.textContent = `${p==='A'?'你':'TA'} 获胜 🎉`; update(); return; }
+  applyEvent(p);
+  state.turn = p==='A'?'B':'A';
+  update();
+}
+
+function reset(){ state={turn:'A',A:0,B:0,finished:false}; save(); buildBoard(); update(); }
+
+document.getElementById('roll').onclick=roll;
+document.getElementById('reset').onclick=reset;
+
+buildBoard(); update();
+</script>
 </body>
 </html>
