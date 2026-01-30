@@ -5,16 +5,21 @@ API_KEY = os.getenv('BRAVE_API_KEY')
 assert API_KEY, 'BRAVE_API_KEY missing'
 
 CENTER = 'Frankfurt am Main'
+# 扩展关键词（方案 A）
 KEYWORDS = [
     'Biochemistry Scientist Frankfurt',
     'Postdoc Biochemistry Frankfurt',
     'Research Scientist Biochemistry Frankfurt',
-    'Life Science Scientist Frankfurt'
+    'Life Science Scientist Frankfurt',
+    'Structural Biology Scientist Frankfurt',
+    'Molecular Biology Scientist Frankfurt',
+    'Protein Biochemistry Scientist Frankfurt'
 ]
 ALLOWED_SITES = [
     'stepstone.de',
     'indeed.com', 'indeed.de',
     'glassdoor.com',
+    'eurosciencejobs.com',
     'linkedin.com/jobs',
     'careers.', 'career.', 'jobs.'
 ]
@@ -39,7 +44,7 @@ def is_relevant(url):
     return any(s in url for s in ALLOWED_SITES)
 
 
-# ---- still-open heuristic (no extra deps) ----
+# ---- still-open heuristic ----
 def still_open(url):
     try:
         r = requests.get(url, timeout=20, headers={'User-Agent': 'Mozilla/5.0'})
@@ -69,7 +74,6 @@ for kw in KEYWORDS:
         key = (title, url)
         if key in seen:
             continue
-        # verify still open
         if not still_open(url):
             continue
         seen.add(key)
