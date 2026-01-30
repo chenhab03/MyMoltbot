@@ -20,7 +20,7 @@
   <h1>🧬 法兰克福生物化学博士岗位（真实在招）</h1>
   <div class="sub">来源：StepStone / 官方 Career 页面 · 范围：法兰克福 ±50 km · 仅收录已核验岗位</div>
 
-  <table id="jobs">
+  <table>
     <thead>
       <tr>
         <th>公司 / 机构</th>
@@ -30,25 +30,24 @@
         <th>链接</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="jobs"></tbody>
   </table>
 
-  <div class="foot">页面内容会随着仓库内 <code>jobs_verified_frankfurt_biochem.csv</code> 更新而自动刷新（GitHub Pages）。</div>
+  <div class="foot">数据源：<code>jobs_verified_frankfurt_biochem.json</code>（我只更新这个文件，页面自动刷新）</div>
 
 <script>
-async function loadCSV(){
-  const r = await fetch('jobs_verified_frankfurt_biochem.csv');
-  const t = await r.text();
-  const rows = t.trim().split('\n').slice(1).map(l=>l.split(','));
-  const tb = document.querySelector('#jobs tbody');
-  tb.innerHTML='';
-  for(const [company,role,location,source,url] of rows){
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${company}</td><td>${role}</td><td>${location}</td><td>${source}</td><td><a href="${url}" target="_blank">查看</a></td>`;
+async function loadJobs(){
+  const r = await fetch('jobs_verified_frankfurt_biochem.json');
+  const data = await r.json();
+  const tb = document.getElementById('jobs');
+  tb.innerHTML = '';
+  for(const j of data){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${j.company}</td><td>${j.role}</td><td>${j.location}</td><td>${j.source}</td><td><a href="${j.url}" target="_blank">查看</a></td>`;
     tb.appendChild(tr);
   }
 }
-loadCSV();
+loadJobs();
 </script>
 </body>
 </html>
