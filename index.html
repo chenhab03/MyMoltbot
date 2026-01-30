@@ -3,113 +3,52 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>德国生物化学博士岗位搜索 · 法兰克福</title>
+  <title>法兰克福生物化学博士岗位（已核验）</title>
   <style>
-    body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:16px}
-    .app{background:#020617;border-radius:16px;padding:16px;width:100%;max-width:1100px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
-    h1{margin:0 0 8px 0;font-size:22px;text-align:center}
-    .hint{font-size:12px;opacity:.85;text-align:center;margin-bottom:12px}
-    .controls{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-    input,select,button{background:#020617;color:#e5e7eb;border:1px solid #1e293b;border-radius:8px;padding:10px}
-    button{background:#38bdf8;color:#020617;font-weight:700;cursor:pointer}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border-bottom:1px solid #1e293b;padding:8px;font-size:12px;text-align:left;vertical-align:top}
-    th{opacity:.8}
+    body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;min-height:100vh;padding:16px}
+    h1{text-align:center;margin-bottom:6px}
+    .sub{text-align:center;font-size:12px;opacity:.85;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse;background:#020617;border-radius:12px;overflow:hidden}
+    th,td{padding:10px;border-bottom:1px solid #1e293b;font-size:13px;text-align:left}
+    th{background:#020617;opacity:.85}
+    tr:hover{background:#020617}
     a{color:#93c5fd;text-decoration:none}
-    .ok{color:#34d399}
-    .bad{color:#f87171}
-    .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#1e293b;font-size:10px;margin-left:6px}
-    .foot{font-size:11px;opacity:.7;margin-top:8px}
+    .foot{margin-top:12px;font-size:11px;opacity:.7;text-align:center}
   </style>
 </head>
 <body>
-  <div class="app">
-    <h1>🧬 德国岗位爬取（生物化学博士）</h1>
-    <div class="hint">数据源：德国联邦就业局 Jobbörse（官方开放 API）+ EURES（欧盟官方）。仅抓取允许的公开接口，不抓取受限站点。</div>
+  <h1>🧬 法兰克福生物化学博士岗位（真实在招）</h1>
+  <div class="sub">来源：StepStone / 官方 Career 页面 · 范围：法兰克福 ±50 km · 仅收录已核验岗位</div>
 
-    <div class="controls">
-      <input id="kw" placeholder="关键词（biochemistry / life science / postdoc / scientist）" value="biochemistry scientist" />
-      <input id="city" placeholder="城市" value="Frankfurt am Main" />
-      <select id="radius">
-        <option value="20">20 km</option>
-        <option value="30" selected>30 km</option>
-        <option value="50">50 km</option>
-      </select>
-      <button id="run">搜索岗位</button>
-    </div>
+  <table id="jobs">
+    <thead>
+      <tr>
+        <th>公司 / 机构</th>
+        <th>岗位</th>
+        <th>地点</th>
+        <th>来源</th>
+        <th>链接</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <table>
-      <thead>
-        <tr>
-          <th>来源</th><th>职位</th><th>单位</th><th>地点</th><th>距离</th><th>链接</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-
-    <div class="foot">说明：本工具使用官方/开放接口（BA Jobbörse、EURES）。如需覆盖 StepStone/Indeed/LinkedIn 等站点，建议改为服务器端并遵循各站 ToS。</div>
-  </div>
+  <div class="foot">页面内容会随着仓库内 <code>jobs_verified_frankfurt_biochem.csv</code> 更新而自动刷新（GitHub Pages）。</div>
 
 <script>
-// ===== 简单地理工具（Haversine） =====
-function distKm(a,b){ const R=6371; const dLat=(b.lat-a.lat)*Math.PI/180; const dLon=(b.lon-a.lon)*Math.PI/180; const la1=a.lat*Math.PI/180; const la2=b.lat*Math.PI/180; const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
-
-// ===== 地理编码（Nominatim） =====
-async function geocode(q){ const u=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`; const j=await (await fetch(u,{headers:{'Accept':'application/json'}})).json(); if(!j[0]) throw new Error('geocode'); return {lat:+j[0].lat, lon:+j[0].lon}; }
-
-// ===== BA Jobbörse（官方开放） =====
-async function fetchBA({kw,city,radius}){
-  const base='https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v4/jobs';
-  const params=new URLSearchParams({ was:kw, wo:city, umkreis:radius, page:1, size:50 });
-  const r=await fetch(`${base}?${params.toString()}`,{headers:{'X-API-Key':'jobboerse-jobsuche'}});
-  if(!r.ok) throw new Error('BA');
-  const j=await r.json();
-  return (j.stellenangebote||[]).map(x=>({
-    source:'BA Jobbörse',
-    title:x.titel,
-    company:x.arbeitgeber?.name||'—',
-    place:`${x.arbeitsort?.ort||''}`,
-    lat:x.arbeitsort?.koordinaten?.breitengrad,
-    lon:x.arbeitsort?.koordinaten?.laengengrad,
-    url:`https://jobboerse.arbeitsagentur.de/vamJB/stellenangebot?angebotId=${x.refnr}`
-  }));
+async function loadCSV(){
+  const r = await fetch('jobs_verified_frankfurt_biochem.csv');
+  const t = await r.text();
+  const rows = t.trim().split('\n').slice(1).map(l=>l.split(','));
+  const tb = document.querySelector('#jobs tbody');
+  tb.innerHTML='';
+  for(const [company,role,location,source,url] of rows){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${company}</td><td>${role}</td><td>${location}</td><td>${source}</td><td><a href="${url}" target="_blank">查看</a></td>`;
+    tb.appendChild(tr);
+  }
 }
-
-// ===== EURES（欧盟官方，简化抓取） =====
-async function fetchEURES({kw,city,radius}){
-  const u=`https://europa.eu/eures/eures-apps/searchengine/pageSearch?page=1&size=50&keywords=${encodeURIComponent(kw)}&place=${encodeURIComponent(city)}`;
-  const j=await (await fetch(u)).json();
-  return (j?.jobs||[]).map(x=>({
-    source:'EURES',
-    title:x.title,
-    company:x.companyName||'—',
-    place:x.location||'',
-    lat:x.latitude, lon:x.longitude,
-    url:x.url
-  }));
-}
-
-const tbody=document.getElementById('tbody');
-
-document.getElementById('run').onclick=async()=>{
-  tbody.innerHTML='<tr><td colspan="6">搜索中，请稍候…</td></tr>';
-  try{
-    const kw=document.getElementById('kw').value;
-    const city=document.getElementById('city').value;
-    const radius=+document.getElementById('radius').value;
-    const center=await geocode(city);
-    const [ba,eu]=await Promise.all([fetchBA({kw,city,radius}), fetchEURES({kw,city,radius})]);
-    const rows=[...ba,...eu].filter(x=>x.lat&&x.lon).map(x=>({ ...x, d: distKm(center,{lat:x.lat,lon:x.lon}) }))
-      .filter(x=>x.d<=radius).sort((a,b)=>a.d-b.d);
-    tbody.innerHTML='';
-    for(const r of rows){
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${r.source}</td><td>${r.title}</td><td>${r.company}</td><td>${r.place}</td><td>${r.d.toFixed(1)} km</td><td><a href="${r.url}" target="_blank">查看</a></td>`;
-      tbody.appendChild(tr);
-    }
-    if(!rows.length) tbody.innerHTML='<tr><td colspan="6">未找到符合条件的岗位</td></tr>';
-  }catch(e){ tbody.innerHTML='<tr><td colspan="6" class="bad">搜索失败</td></tr>'; }
-};
+loadCSV();
 </script>
 </body>
 </html>
