@@ -3,112 +3,113 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>美股选股器 · SPY 自动成分股</title>
+  <title>德国生物化学博士岗位搜索 · 法兰克福</title>
   <style>
     body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:16px}
-    .app{background:#020617;border-radius:16px;padding:16px;width:100%;max-width:980px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+    .app{background:#020617;border-radius:16px;padding:16px;width:100%;max-width:1100px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
     h1{margin:0 0 8px 0;font-size:22px;text-align:center}
     .hint{font-size:12px;opacity:.85;text-align:center;margin-bottom:12px}
-    .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-    input,button{background:#020617;color:#e5e7eb;border:1px solid #1e293b;border-radius:8px;padding:10px}
+    .controls{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+    input,select,button{background:#020617;color:#e5e7eb;border:1px solid #1e293b;border-radius:8px;padding:10px}
     button{background:#38bdf8;color:#020617;font-weight:700;cursor:pointer}
     table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border-bottom:1px solid #1e293b;padding:8px;font-size:12px;text-align:left}
+    th,td{border-bottom:1px solid #1e293b;padding:8px;font-size:12px;text-align:left;vertical-align:top}
     th{opacity:.8}
+    a{color:#93c5fd;text-decoration:none}
     .ok{color:#34d399}
     .bad{color:#f87171}
+    .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#1e293b;font-size:10px;margin-left:6px}
     .foot{font-size:11px;opacity:.7;margin-top:8px}
   </style>
 </head>
 <body>
   <div class="app">
-    <h1>📈 美股选股器（SPY 自动成分股）</h1>
-    <div class="hint">自动加载 SPY（≈ 标普 500）全部成分股并筛选：MACD≈0｜价格≈EMA52｜J&lt;10｜市值&gt;50 亿美元</div>
+    <h1>🧬 德国岗位爬取（生物化学博士）</h1>
+    <div class="hint">数据源：德国联邦就业局 Jobbörse（官方开放 API）+ EURES（欧盟官方）。仅抓取允许的公开接口，不抓取受限站点。</div>
 
     <div class="controls">
-      <div>
-        <label>MACD 距离零轴阈值</label>
-        <input id="macdThr" type="number" step="0.01" value="0.1" />
-      </div>
-      <div>
-        <label>价格接近 EMA52 (%)</label>
-        <input id="emaPct" type="number" step="0.1" value="2" />
-      </div>
-      <div>
-        <label>J 值上限</label>
-        <input id="jMax" type="number" value="10" />
-      </div>
-      <div>
-        <label>最小市值（十亿美元）</label>
-        <input id="mcapMin" type="number" value="5" />
-      </div>
-      <div style="grid-column:1/3">
-        <button id="run">自动加载 SPY 成分股并筛选</button>
-      </div>
+      <input id="kw" placeholder="关键词（biochemistry / life science / postdoc / scientist）" value="biochemistry scientist" />
+      <input id="city" placeholder="城市" value="Frankfurt am Main" />
+      <select id="radius">
+        <option value="20">20 km</option>
+        <option value="30" selected>30 km</option>
+        <option value="50">50 km</option>
+      </select>
+      <button id="run">搜索岗位</button>
     </div>
 
     <table>
       <thead>
         <tr>
-          <th>代码</th><th>收盘价</th><th>EMA52</th><th>MACD</th><th>J</th><th>市值(十亿美元)</th><th>结果</th>
+          <th>来源</th><th>职位</th><th>单位</th><th>地点</th><th>距离</th><th>链接</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
 
-    <div class="foot">说明：SPY ≈ 标普 500。成分股来源：Wikipedia（前端抓取）。Yahoo Finance 公共接口可能限流，首次加载较慢。</div>
+    <div class="foot">说明：本工具使用官方/开放接口（BA Jobbörse、EURES）。如需覆盖 StepStone/Indeed/LinkedIn 等站点，建议改为服务器端并遵循各站 ToS。</div>
   </div>
 
 <script>
-// ===== 指标 =====
-function EMA(values, period){ const k=2/(period+1); let ema=values[0]; for(let i=1;i<values.length;i++) ema=values[i]*k+ema*(1-k); return ema; }
-function MACD(close){ const ema12=EMA(close.slice(-26),12); const ema26=EMA(close.slice(-26),26); return ema12-ema26; }
-function KDJ(high, low, close, n=9){ const hs=high.slice(-n); const ls=low.slice(-n); const c=close[close.length-1]; const hh=Math.max(...hs); const ll=Math.min(...ls); const rsv=(c-ll)/(hh-ll)*100; let k=2/3*50+1/3*rsv; let d=2/3*50+1/3*k; let j=3*k-2*d; return {j}; }
-function near(a,b,pct){ return Math.abs(a-b)/b*100<=pct; }
+// ===== 简单地理工具（Haversine） =====
+function distKm(a,b){ const R=6371; const dLat=(b.lat-a.lat)*Math.PI/180; const dLon=(b.lon-a.lon)*Math.PI/180; const la1=a.lat*Math.PI/180; const la2=b.lat*Math.PI/180; const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
 
-// ===== 数据源 =====
-async function fetchSPY(){
-  const url='https://en.wikipedia.org/wiki/List_of_S%26P_500_companies';
-  const html=await (await fetch(url)).text();
-  const doc=new DOMParser().parseFromString(html,'text/html');
-  const rows=[...doc.querySelectorAll('table.wikitable tbody tr')];
-  return rows.map(r=>r.children[0].textContent.trim()).filter(Boolean);
+// ===== 地理编码（Nominatim） =====
+async function geocode(q){ const u=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`; const j=await (await fetch(u,{headers:{'Accept':'application/json'}})).json(); if(!j[0]) throw new Error('geocode'); return {lat:+j[0].lat, lon:+j[0].lon}; }
+
+// ===== BA Jobbörse（官方开放） =====
+async function fetchBA({kw,city,radius}){
+  const base='https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v4/jobs';
+  const params=new URLSearchParams({ was:kw, wo:city, umkreis:radius, page:1, size:50 });
+  const r=await fetch(`${base}?${params.toString()}`,{headers:{'X-API-Key':'jobboerse-jobsuche'}});
+  if(!r.ok) throw new Error('BA');
+  const j=await r.json();
+  return (j.stellenangebote||[]).map(x=>({
+    source:'BA Jobbörse',
+    title:x.titel,
+    company:x.arbeitgeber?.name||'—',
+    place:`${x.arbeitsort?.ort||''}`,
+    lat:x.arbeitsort?.koordinaten?.breitengrad,
+    lon:x.arbeitsort?.koordinaten?.laengengrad,
+    url:`https://jobboerse.arbeitsagentur.de/vamJB/stellenangebot?angebotId=${x.refnr}`
+  }));
 }
-async function fetchDaily(symbol){
-  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=6mo&interval=1d`;
-  const j=await (await fetch(url)).json();
-  const res=j.chart.result[0]; const q=res.indicators.quote[0];
-  return { close:q.close.filter(Boolean), high:q.high.filter(Boolean), low:q.low.filter(Boolean) };
-}
-async function fetchMcap(symbol){
-  const url=`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price`;
-  const j=await (await fetch(url)).json();
-  const p=j.quoteSummary.result[0].price; return p.marketCap?.raw? p.marketCap.raw/1e9:null;
+
+// ===== EURES（欧盟官方，简化抓取） =====
+async function fetchEURES({kw,city,radius}){
+  const u=`https://europa.eu/eures/eures-apps/searchengine/pageSearch?page=1&size=50&keywords=${encodeURIComponent(kw)}&place=${encodeURIComponent(city)}`;
+  const j=await (await fetch(u)).json();
+  return (j?.jobs||[]).map(x=>({
+    source:'EURES',
+    title:x.title,
+    company:x.companyName||'—',
+    place:x.location||'',
+    lat:x.latitude, lon:x.longitude,
+    url:x.url
+  }));
 }
 
 const tbody=document.getElementById('tbody');
 
 document.getElementById('run').onclick=async()=>{
-  tbody.innerHTML='<tr><td colspan="7">加载 SPY 成分股中，请稍候…</td></tr>';
-  const syms=await fetchSPY();
-  tbody.innerHTML='';
-  const macdThr=parseFloat(macdThrEl.value); const emaPct=parseFloat(emaPctEl.value); const jMax=parseFloat(jMaxEl.value); const mcapMin=parseFloat(mcapMinEl.value);
-  for(const s of syms){
-    try{
-      const [ohlc,mcap]=await Promise.all([fetchDaily(s), fetchMcap(s)]);
-      const close=ohlc.close; const ema52=EMA(close.slice(-52),52); const macd=MACD(close); const {j}=KDJ(ohlc.high,ohlc.low,close); const last=close[close.length-1];
-      const ok=Math.abs(macd)<=macdThr && near(last,ema52,emaPct) && j<jMax && (mcap??0)>=mcapMin;
+  tbody.innerHTML='<tr><td colspan="6">搜索中，请稍候…</td></tr>';
+  try{
+    const kw=document.getElementById('kw').value;
+    const city=document.getElementById('city').value;
+    const radius=+document.getElementById('radius').value;
+    const center=await geocode(city);
+    const [ba,eu]=await Promise.all([fetchBA({kw,city,radius}), fetchEURES({kw,city,radius})]);
+    const rows=[...ba,...eu].filter(x=>x.lat&&x.lon).map(x=>({ ...x, d: distKm(center,{lat:x.lat,lon:x.lon}) }))
+      .filter(x=>x.d<=radius).sort((a,b)=>a.d-b.d);
+    tbody.innerHTML='';
+    for(const r of rows){
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${s}</td><td>${last.toFixed(2)}</td><td>${ema52.toFixed(2)}</td><td>${macd.toFixed(3)}</td><td>${j.toFixed(1)}</td><td>${mcap?mcap.toFixed(1):'—'}</td><td class="${ok?'ok':'bad'}">${ok?'通过':'未通过'}</td>`;
+      tr.innerHTML=`<td>${r.source}</td><td>${r.title}</td><td>${r.company}</td><td>${r.place}</td><td>${r.d.toFixed(1)} km</td><td><a href="${r.url}" target="_blank">查看</a></td>`;
       tbody.appendChild(tr);
-    }catch(e){/* 忽略失败 */}
-  }
+    }
+    if(!rows.length) tbody.innerHTML='<tr><td colspan="6">未找到符合条件的岗位</td></tr>';
+  }catch(e){ tbody.innerHTML='<tr><td colspan="6" class="bad">搜索失败</td></tr>'; }
 };
-
-const macdThrEl=document.getElementById('macdThr');
-const emaPctEl=document.getElementById('emaPct');
-const jMaxEl=document.getElementById('jMax');
-const mcapMinEl=document.getElementById('mcapMin');
 </script>
 </body>
 </html>
