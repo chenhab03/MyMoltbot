@@ -1,53 +1,1845 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>法兰克福生物化学博士岗位（已核验）</title>
-  <style>
-    body{font-family:system-ui,-apple-system;background:#0f172a;color:#e5e7eb;min-height:100vh;padding:16px}
-    h1{text-align:center;margin-bottom:6px}
-    .sub{text-align:center;font-size:12px;opacity:.85;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;background:#020617;border-radius:12px;overflow:hidden}
-    th,td{padding:10px;border-bottom:1px solid #1e293b;font-size:13px;text-align:left}
-    th{background:#020617;opacity:.85}
-    tr:hover{background:#020617}
-    a{color:#93c5fd;text-decoration:none}
-    .foot{margin-top:12px;font-size:11px;opacity:.7;text-align:center}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>魔法森林寻宝记</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#game-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+canvas {
+  border: 3px solid #4a4a6a;
+  border-radius: 4px;
+  image-rendering: pixelated;
+  display: block;
+}
+#ui-overlay {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 10;
+  text-shadow: 1px 1px 2px #000;
+}
+#controls-help {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #aaa;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 10;
+  text-shadow: 1px 1px 2px #000;
+}
+
+/* ===== 触屏虚拟按键 ===== */
+#touch-controls {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  z-index: 20;
+  pointer-events: none;
+}
+/* 方向键区域 - 左下 */
+#dpad {
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  width: 150px;
+  height: 150px;
+  pointer-events: auto;
+}
+.dpad-btn {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 22px;
+  color: rgba(255,255,255,0.7);
+  pointer-events: auto;
+  transition: background 0.08s;
+  -webkit-tap-highlight-color: transparent;
+}
+.dpad-btn:active, .dpad-btn.pressed {
+  background: rgba(255,215,0,0.4);
+  border-color: rgba(255,215,0,0.7);
+  color: #fff;
+}
+#dpad-up    { left: 50px; top: 0; }
+#dpad-down  { left: 50px; bottom: 0; }
+#dpad-left  { left: 0; top: 50px; }
+#dpad-right { right: 0; top: 50px; }
+/* 中心装饰 */
+#dpad::after {
+  content: '';
+  position: absolute;
+  left: 50px; top: 50px;
+  width: 50px; height: 50px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* 动作按钮区域 - 右下 */
+#action-buttons {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  width: 160px;
+  height: 150px;
+  pointer-events: auto;
+}
+.action-btn {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.13);
+  border: 2px solid rgba(255,255,255,0.28);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: rgba(255,255,255,0.7);
+  pointer-events: auto;
+  transition: background 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  text-align: center;
+  line-height: 1.1;
+}
+.action-btn:active, .action-btn.pressed {
+  background: rgba(255,215,0,0.4);
+  border-color: rgba(255,215,0,0.7);
+  color: #fff;
+}
+/* 确认键 - 右侧大按钮 */
+#btn-confirm { right: 0; top: 50px; width: 56px; height: 56px; font-size: 12px;
+  background: rgba(46,204,113,0.2); border-color: rgba(46,204,113,0.5); }
+#btn-confirm:active, #btn-confirm.pressed {
+  background: rgba(46,204,113,0.5); border-color: rgba(46,204,113,0.8); }
+
+/* 藏宝图键 */
+#btn-map { left: 0; top: 50px; font-size: 13px;
+  background: rgba(52,152,219,0.2); border-color: rgba(52,152,219,0.5); }
+#btn-map:active, #btn-map.pressed {
+  background: rgba(52,152,219,0.5); border-color: rgba(52,152,219,0.8); }
+
+/* 角色切换按钮行 - 上方居中 */
+#char-switch {
+  position: absolute;
+  bottom: 170px;
+  right: 20px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+.char-btn {
+  width: 44px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.12);
+  border: 2px solid rgba(255,255,255,0.25);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 12px;
+  font-weight: bold;
+  pointer-events: auto;
+  transition: background 0.08s;
+  -webkit-tap-highlight-color: transparent;
+}
+.char-btn:active, .char-btn.pressed {
+  filter: brightness(1.5);
+}
+#char1 { color: #e74c3c; border-color: rgba(231,76,60,0.5); }
+#char1.active { background: rgba(231,76,60,0.3); border-color: #e74c3c; }
+#char2 { color: #f39c12; border-color: rgba(243,156,18,0.5); }
+#char2.active { background: rgba(243,156,18,0.3); border-color: #f39c12; }
+#char3 { color: #8e44ad; border-color: rgba(142,68,173,0.5); }
+#char3.active { background: rgba(142,68,173,0.3); border-color: #8e44ad; }
+
+/* 手机适配 */
+@media (pointer: coarse) {
+  #touch-controls { display: block; }
+  #controls-help { display: none; }
+}
+@media (max-width: 680px) {
+  #touch-controls { display: block; }
+  #controls-help { display: none; }
+}
+</style>
 </head>
 <body>
-  <h1>🧬 法兰克福生物化学博士岗位（真实在招）</h1>
-  <div class="sub">来源：StepStone / 官方 Career 页面 · 范围：法兰克福 ±50 km · 仅收录已核验岗位</div>
+<div id="ui-overlay"></div>
+<div id="controls-help">方向键: 移动 | 1/2/3: 切换角色 | M: 查看藏宝图 | 空格: 确认</div>
+<div id="game-wrapper">
+  <canvas id="game"></canvas>
+</div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>公司 / 机构</th>
-        <th>岗位</th>
-        <th>地点</th>
-        <th>来源</th>
-        <th>链接</th>
-      </tr>
-    </thead>
-    <tbody id="jobs"></tbody>
-  </table>
-
-  <div class="foot">数据源：<code>jobs_verified_frankfurt_biochem.json</code>（我只更新这个文件，页面自动刷新）</div>
+<!-- 触屏虚拟按键 -->
+<div id="touch-controls">
+  <!-- 方向键 -->
+  <div id="dpad">
+    <div class="dpad-btn" id="dpad-up">▲</div>
+    <div class="dpad-btn" id="dpad-left">◀</div>
+    <div class="dpad-btn" id="dpad-right">▶</div>
+    <div class="dpad-btn" id="dpad-down">▼</div>
+  </div>
+  <!-- 角色切换 -->
+  <div id="char-switch">
+    <div class="char-btn active" id="char1">小红</div>
+    <div class="char-btn" id="char2">小橙</div>
+    <div class="char-btn" id="char3">小紫</div>
+  </div>
+  <!-- 动作按钮 -->
+  <div id="action-buttons">
+    <div class="action-btn" id="btn-map">藏宝<br>图</div>
+    <div class="action-btn" id="btn-confirm">确认</div>
+  </div>
+</div>
 
 <script>
-async function loadJobs(){
-  const r = await fetch('jobs_verified_frankfurt_biochem.json');
-  const data = await r.json();
-  const tb = document.getElementById('jobs');
-  tb.innerHTML = '';
-  for(const j of data){
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${j.company}</td><td>${j.role}</td><td>${j.location}</td><td>${j.source}</td><td><a href="${j.url}" target="_blank">查看</a></td>`;
-    tb.appendChild(tr);
+// ==================== 常量 ====================
+const TILE = 32;
+const CANVAS_W = 640;
+const CANVAS_H = 480;
+const VIEWPORT_COLS = Math.ceil(CANVAS_W / TILE) + 1;
+const VIEWPORT_ROWS = Math.ceil(CANVAS_H / TILE) + 1;
+const DRAGON_MOVE_INTERVAL = 300000; // 5分钟 = 300000ms
+
+// 瓦片类型
+const T = {
+  GRASS: 0, TREE: 1, PATH: 2, FRAGMENT_A: 3, FRAGMENT_B: 4, FRAGMENT_C: 5,
+  WALL: 6, FLOOR: 7, TREASURE: 8, DOOR: 9, CARPET: 10, PILLAR: 11,
+  WATER: 12, FLOWER: 13, MUSHROOM: 14, TORCH: 15, THRONE: 16, BOOKSHELF: 17
+};
+
+// 颜色
+const COLORS = {
+  grass: '#3a7d44', grassDark: '#2d6535', tree: '#1a4d2e', treeTrunk: '#5c3a1e',
+  treeLeaf: '#2d8a4e', treeLeafDark: '#1f6b38', path: '#8b7355', pathDark: '#6d5a43',
+  wall: '#5a5a6e', wallDark: '#3d3d50', wallLight: '#7a7a90',
+  floor: '#6b6b80', floorDark: '#555568', carpet: '#8b2252', carpetDark: '#6b1a42',
+  water: '#2e6b9e', waterLight: '#4a8bbe', flower1: '#e74c3c', flower2: '#f1c40f',
+  flower3: '#9b59b6', mushroom: '#e07040', mushroomCap: '#c0392b',
+  torch: '#f39c12', torchFlame: '#e74c3c', throne: '#8b6914',
+  bookshelf: '#5c3a1e', bookColors: ['#c0392b', '#2980b9', '#27ae60', '#8e44ad']
+};
+
+// ==================== Canvas 初始化 ====================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = CANVAS_W;
+canvas.height = CANVAS_H;
+
+// 响应式缩放 — 游戏逻辑分辨率不变，CSS 缩放适配屏幕
+function resizeCanvas() {
+  const isMobile = window.innerWidth <= 680 || ('ontouchstart' in window);
+  const bottomPad = isMobile ? 210 : 20; // 给虚拟按键留空间
+  const maxW = window.innerWidth - 16;
+  const maxH = window.innerHeight - bottomPad;
+  const scale = Math.min(maxW / CANVAS_W, maxH / CANVAS_H, 2);
+  canvas.style.width = Math.floor(CANVAS_W * scale) + 'px';
+  canvas.style.height = Math.floor(CANVAS_H * scale) + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
+
+// ==================== 地图数据 ====================
+// 第一关: 魔法森林迷宫 (35x35)
+function generateForestMaze() {
+  const W = 35, H = 35;
+  // 初始全部是树
+  const map = Array.from({length: H}, () => Array(W).fill(T.TREE));
+
+  // 用递归回溯法生成迷宫
+  function carve(x, y) {
+    map[y][x] = T.PATH;
+    const dirs = [[0,-2],[0,2],[-2,0],[2,0]].sort(() => Math.random() - 0.5);
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx, ny = y + dy;
+      if (nx > 0 && nx < W-1 && ny > 0 && ny < H-1 && map[ny][nx] === T.TREE) {
+        map[y + dy/2][x + dx/2] = T.PATH;
+        carve(nx, ny);
+      }
+    }
+  }
+
+  // 从中心开始生成迷宫 (奇数坐标)
+  carve(17, 17);
+
+  // 确保起点周围有空地
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++)
+      map[17 + dy][17 + dx] = T.PATH;
+
+  // 添加装饰
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (map[y][x] === T.PATH && Math.random() < 0.03) {
+        map[y][x] = T.FLOWER;
+      } else if (map[y][x] === T.PATH && Math.random() < 0.02) {
+        map[y][x] = T.MUSHROOM;
+      }
+    }
+  }
+
+  // 在4个角落区域找到可达的路径格子放置碎片
+  const corners = [
+    {sx: 1, sy: 1, ex: 10, ey: 10},       // 左上
+    {sx: W-11, sy: 1, ex: W-2, ey: 10},    // 右上
+    {sx: 1, sy: H-11, ex: 10, ey: H-2},    // 左下
+  ];
+
+  const fragTypes = [T.FRAGMENT_A, T.FRAGMENT_B, T.FRAGMENT_C];
+  corners.forEach((c, i) => {
+    // 在角落区域找一个路径格放碎片
+    let placed = false;
+    for (let y = c.ey; y >= c.sy && !placed; y--) {
+      for (let x = c.ex; x >= c.sx && !placed; x--) {
+        if (map[y][x] === T.PATH || map[y][x] === T.FLOWER || map[y][x] === T.MUSHROOM) {
+          map[y][x] = fragTypes[i];
+          placed = true;
+        }
+      }
+    }
+    // 如果没找到就强制放
+    if (!placed) {
+      map[c.sy + 1][c.sx + 1] = T.PATH;
+      map[c.sy + 2][c.sx + 1] = fragTypes[i];
+    }
+  });
+
+  // 在边缘添加水和草地装饰
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (map[y][x] === T.TREE && Math.random() < 0.05) {
+        // 检查是否靠近路径
+        let nearPath = false;
+        for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+          const nx = x+dx, ny = y+dy;
+          if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+            const t = map[ny][nx];
+            if (t !== T.TREE && t !== T.WATER) nearPath = true;
+          }
+        }
+        if (!nearPath) map[y][x] = T.WATER;
+      }
+    }
+  }
+
+  return { map, width: W, height: H, startX: 17, startY: 17 };
+}
+
+// 第二关: 巨龙城堡 (35x35)
+function generateCastleMaze() {
+  const W = 35, H = 35;
+  const map = Array.from({length: H}, () => Array(W).fill(T.WALL));
+
+  // 用递归回溯法生成城堡迷宫
+  function carve(x, y) {
+    map[y][x] = T.FLOOR;
+    const dirs = [[0,-2],[0,2],[-2,0],[2,0]].sort(() => Math.random() - 0.5);
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx, ny = y + dy;
+      if (nx > 0 && nx < W-1 && ny > 0 && ny < H-1 && map[ny][nx] === T.WALL) {
+        map[y + dy/2][x + dx/2] = T.FLOOR;
+        carve(nx, ny);
+      }
+    }
+  }
+
+  // 入口在顶部中央
+  const startX = 17, startY = 1;
+  carve(startX, startY);
+
+  // 入口区域
+  map[0][17] = T.DOOR;
+  map[1][17] = T.FLOOR;
+  for (let dx = -1; dx <= 1; dx++) {
+    if (17+dx > 0 && 17+dx < W-1) map[1][17+dx] = T.FLOOR;
+    if (17+dx > 0 && 17+dx < W-1) map[2][17+dx] = T.FLOOR;
+  }
+
+  // 添加装饰
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (map[y][x] === T.FLOOR) {
+        if (Math.random() < 0.03) map[y][x] = T.CARPET;
+        else if (Math.random() < 0.01) map[y][x] = T.TORCH;
+      }
+    }
+  }
+
+  // 添加柱子装饰（只在不阻挡通路的地方）
+  for (let y = 2; y < H-2; y += 4) {
+    for (let x = 2; x < W-2; x += 4) {
+      if (map[y][x] === T.FLOOR) {
+        let adjFloor = 0;
+        for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+          const t = map[y+dy]?.[x+dx];
+          if (t === T.FLOOR || t === T.CARPET || t === T.TORCH) adjFloor++;
+        }
+        if (adjFloor >= 3) {
+          // 不放柱子，避免堵路
+        }
+      }
+    }
+  }
+
+  // 宝藏放在右下角附近的可达位置
+  let treasurePlaced = false;
+  for (let y = H-3; y > H/2 && !treasurePlaced; y--) {
+    for (let x = W-3; x > W/2 && !treasurePlaced; x--) {
+      if (map[y][x] === T.FLOOR || map[y][x] === T.CARPET) {
+        map[y][x] = T.TREASURE;
+        treasurePlaced = true;
+      }
+    }
+  }
+
+  // 收集所有可走的走廊位置（供巨龙使用）
+  const corridors = [];
+  for (let y = 2; y < H-2; y++) {
+    for (let x = 2; x < W-2; x++) {
+      if ((map[y][x] === T.FLOOR || map[y][x] === T.CARPET) && map[y][x] !== T.TREASURE) {
+        // 检查是否是走廊（至少2个方向是墙）
+        let wallCount = 0;
+        for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+          if (map[y+dy]?.[x+dx] === T.WALL) wallCount++;
+        }
+        if (wallCount >= 1) corridors.push({x, y});
+      }
+    }
+  }
+
+  return { map, width: W, height: H, startX, startY: 2, corridors };
+}
+
+// ==================== 精灵绘制函数 ====================
+const spriteCache = {};
+
+// 静态瓦片不需要 frame，动画瓦片只用 frame % 60
+const ANIMATED_TILES = new Set([T.FRAGMENT_A, T.FRAGMENT_B, T.FRAGMENT_C, T.TREASURE, T.WATER, T.TORCH, T.FLOWER]);
+
+function getSpriteKey(type, frame) {
+  if (ANIMATED_TILES.has(type)) return `${type}_${frame % 60}`;
+  return `${type}_0`;
+}
+
+function drawTileToBuffer(type, frame) {
+  const key = getSpriteKey(type, frame);
+  if (spriteCache[key]) return spriteCache[key];
+
+  const buf = document.createElement('canvas');
+  buf.width = TILE; buf.height = TILE;
+  const c = buf.getContext('2d');
+
+  switch(type) {
+    case T.GRASS:
+      c.fillStyle = COLORS.grass;
+      c.fillRect(0, 0, TILE, TILE);
+      // 草地纹理
+      c.fillStyle = COLORS.grassDark;
+      for (let i = 0; i < 6; i++) {
+        const gx = (i * 7 + 3) % 28, gy = (i * 11 + 5) % 28;
+        c.fillRect(gx, gy, 2, 4);
+      }
+      break;
+
+    case T.TREE:
+      c.fillStyle = COLORS.grass;
+      c.fillRect(0, 0, TILE, TILE);
+      // 树干
+      c.fillStyle = COLORS.treeTrunk;
+      c.fillRect(12, 18, 8, 14);
+      // 树冠
+      c.fillStyle = COLORS.treeLeaf;
+      c.beginPath();
+      c.arc(16, 14, 12, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = COLORS.treeLeafDark;
+      c.beginPath();
+      c.arc(14, 12, 7, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = COLORS.treeLeaf;
+      c.beginPath();
+      c.arc(18, 10, 6, 0, Math.PI * 2);
+      c.fill();
+      break;
+
+    case T.PATH:
+      c.fillStyle = COLORS.path;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = COLORS.pathDark;
+      for (let i = 0; i < 4; i++) {
+        const px = (i * 9 + 2) % 26, py = (i * 13 + 4) % 26;
+        c.fillRect(px, py, 4, 3);
+      }
+      break;
+
+    case T.FRAGMENT_A:
+    case T.FRAGMENT_B:
+    case T.FRAGMENT_C:
+      // 先画路径背景
+      c.fillStyle = COLORS.path;
+      c.fillRect(0, 0, TILE, TILE);
+      // 发光效果
+      const glowPhase = (frame % 60) / 60;
+      const glowAlpha = 0.3 + Math.sin(glowPhase * Math.PI * 2) * 0.2;
+      c.fillStyle = `rgba(255, 215, 0, ${glowAlpha})`;
+      c.beginPath();
+      c.arc(16, 16, 14, 0, Math.PI * 2);
+      c.fill();
+      // 地图碎片
+      c.fillStyle = '#deb887';
+      c.fillRect(8, 8, 16, 16);
+      c.fillStyle = '#c19a6b';
+      c.fillRect(8, 8, 16, 2);
+      c.fillRect(8, 8, 2, 16);
+      // 碎片标记
+      const fragColors = {[T.FRAGMENT_A]: '#e74c3c', [T.FRAGMENT_B]: '#3498db', [T.FRAGMENT_C]: '#2ecc71'};
+      c.fillStyle = fragColors[type];
+      c.fillRect(12, 12, 8, 8);
+      // 闪光
+      c.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(glowPhase * Math.PI * 2) * 0.3})`;
+      c.fillRect(12, 12, 3, 3);
+      break;
+
+    case T.WALL:
+      c.fillStyle = COLORS.wall;
+      c.fillRect(0, 0, TILE, TILE);
+      // 砖块纹理
+      c.fillStyle = COLORS.wallDark;
+      c.fillRect(0, 0, TILE, 1);
+      c.fillRect(0, 15, TILE, 2);
+      c.fillRect(15, 0, 2, 15);
+      c.fillRect(0, 17, 2, 15);
+      c.fillStyle = COLORS.wallLight;
+      c.fillRect(1, 1, 13, 1);
+      c.fillRect(17, 1, 14, 1);
+      c.fillRect(1, 17, 14, 1);
+      break;
+
+    case T.FLOOR:
+      c.fillStyle = COLORS.floor;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = COLORS.floorDark;
+      c.fillRect(0, 0, TILE, 1);
+      c.fillRect(0, 0, 1, TILE);
+      break;
+
+    case T.CARPET:
+      c.fillStyle = COLORS.floor;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = COLORS.carpet;
+      c.fillRect(2, 2, 28, 28);
+      c.fillStyle = COLORS.carpetDark;
+      c.fillRect(4, 4, 24, 24);
+      c.fillStyle = COLORS.carpet;
+      c.fillRect(6, 6, 20, 20);
+      // 地毯花纹
+      c.fillStyle = '#d4a04a';
+      c.fillRect(14, 14, 4, 4);
+      break;
+
+    case T.TREASURE:
+      c.fillStyle = COLORS.floor;
+      c.fillRect(0, 0, TILE, TILE);
+      // 宝箱
+      const chestGlow = (frame % 60) / 60;
+      c.fillStyle = `rgba(255, 215, 0, ${0.2 + Math.sin(chestGlow * Math.PI * 2) * 0.15})`;
+      c.beginPath();
+      c.arc(16, 16, 15, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#8b6914';
+      c.fillRect(6, 12, 20, 14);
+      c.fillStyle = '#a07818';
+      c.fillRect(6, 10, 20, 6);
+      // 锁
+      c.fillStyle = '#ffd700';
+      c.fillRect(14, 14, 4, 4);
+      // 金色边框
+      c.fillStyle = '#daa520';
+      c.fillRect(6, 12, 20, 2);
+      c.fillRect(6, 24, 20, 2);
+      c.fillRect(6, 12, 2, 14);
+      c.fillRect(24, 12, 2, 14);
+      break;
+
+    case T.DOOR:
+      c.fillStyle = COLORS.wall;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = '#5c3a1e';
+      c.fillRect(4, 2, 24, 28);
+      c.fillStyle = '#7a4f2e';
+      c.fillRect(6, 4, 20, 24);
+      c.fillStyle = '#daa520';
+      c.fillRect(22, 14, 3, 3);
+      break;
+
+    case T.WATER:
+      const waterPhase = (frame % 90) / 90;
+      c.fillStyle = COLORS.water;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = COLORS.waterLight;
+      for (let i = 0; i < 3; i++) {
+        const wx = ((i * 10 + waterPhase * 32) % 32);
+        c.fillRect(wx, 8 + i * 10, 8, 2);
+      }
+      break;
+
+    case T.FLOWER:
+      c.fillStyle = COLORS.path;
+      c.fillRect(0, 0, TILE, TILE);
+      const flColors = [COLORS.flower1, COLORS.flower2, COLORS.flower3];
+      c.fillStyle = '#3a7d44';
+      c.fillRect(14, 16, 4, 10);
+      c.fillStyle = flColors[frame % 3];
+      c.beginPath();
+      c.arc(16, 14, 5, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#f1c40f';
+      c.beginPath();
+      c.arc(16, 14, 2, 0, Math.PI * 2);
+      c.fill();
+      break;
+
+    case T.MUSHROOM:
+      c.fillStyle = COLORS.path;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = '#ddd';
+      c.fillRect(14, 18, 4, 8);
+      c.fillStyle = COLORS.mushroomCap;
+      c.beginPath();
+      c.arc(16, 16, 8, Math.PI, 0);
+      c.fill();
+      c.fillStyle = '#fff';
+      c.fillRect(12, 12, 2, 2);
+      c.fillRect(18, 13, 2, 2);
+      break;
+
+    case T.TORCH:
+      c.fillStyle = COLORS.floor;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = '#5c3a1e';
+      c.fillRect(14, 14, 4, 12);
+      const fPhase = (frame % 30) / 30;
+      c.fillStyle = COLORS.torch;
+      c.beginPath();
+      c.arc(16, 12, 4 + Math.sin(fPhase * Math.PI * 2), 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = COLORS.torchFlame;
+      c.beginPath();
+      c.arc(16, 10, 2 + Math.sin(fPhase * Math.PI * 4), 0, Math.PI * 2);
+      c.fill();
+      // 光晕
+      c.fillStyle = `rgba(243, 156, 18, ${0.1 + Math.sin(fPhase * Math.PI * 2) * 0.05})`;
+      c.beginPath();
+      c.arc(16, 12, 14, 0, Math.PI * 2);
+      c.fill();
+      break;
+
+    case T.THRONE:
+      c.fillStyle = COLORS.floor;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = COLORS.throne;
+      c.fillRect(8, 4, 16, 24);
+      c.fillStyle = '#a07818';
+      c.fillRect(10, 2, 12, 6);
+      c.fillStyle = '#e74c3c';
+      c.fillRect(12, 8, 8, 8);
+      break;
+
+    case T.BOOKSHELF:
+      c.fillStyle = COLORS.wall;
+      c.fillRect(0, 0, TILE, TILE);
+      c.fillStyle = COLORS.bookshelf;
+      c.fillRect(2, 2, 28, 28);
+      // 书本
+      for (let i = 0; i < 4; i++) {
+        c.fillStyle = COLORS.bookColors[i];
+        c.fillRect(4 + i * 7, 4, 5, 10);
+        c.fillRect(4 + i * 7, 18, 5, 10);
+      }
+      break;
+  }
+
+  spriteCache[key] = buf;
+  return buf;
+}
+
+// ==================== 角色绘制 ====================
+const CHAR_COLORS = [
+  { hair: '#e74c3c', shirt: '#3498db', skin: '#fdd', name: '小红' },
+  { hair: '#f39c12', shirt: '#2ecc71', skin: '#fdd', name: '小橙' },
+  { hair: '#8e44ad', shirt: '#e67e22', skin: '#fdd', name: '小紫' }
+];
+
+function drawCharacter(c, charIdx, dir, frame, highlight) {
+  const ch = CHAR_COLORS[charIdx];
+  const bounce = Math.sin(frame * 0.3) * 1.5;
+  const isMoving = Math.abs(bounce) > 0.5;
+
+  // 高亮边框（选中时）
+  if (highlight) {
+    c.strokeStyle = '#ffd700';
+    c.lineWidth = 2;
+    c.strokeRect(6, 4, 20, 26);
+  }
+
+  // 阴影
+  c.fillStyle = 'rgba(0,0,0,0.2)';
+  c.beginPath();
+  c.ellipse(16, 30, 8, 3, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // 身体
+  c.fillStyle = ch.shirt;
+  c.fillRect(10, 16 + bounce, 12, 10);
+
+  // 手臂
+  if (dir === 1) { // 左
+    c.fillStyle = ch.skin;
+    c.fillRect(6, 17 + bounce, 4, 6);
+    c.fillRect(22, 17 + bounce, 4, 6);
+  } else if (dir === 3) { // 右
+    c.fillStyle = ch.skin;
+    c.fillRect(6, 17 + bounce, 4, 6);
+    c.fillRect(22, 17 + bounce, 4, 6);
+  } else {
+    c.fillStyle = ch.skin;
+    c.fillRect(7, 18 + bounce, 4, 6);
+    c.fillRect(21, 18 + bounce, 4, 6);
+  }
+
+  // 腿
+  c.fillStyle = '#4a3728';
+  const legOff = isMoving ? Math.sin(frame * 0.6) * 2 : 0;
+  c.fillRect(11, 25 + bounce, 4, 5);
+  c.fillRect(17, 25 + bounce + legOff, 4, 5);
+
+  // 头
+  c.fillStyle = ch.skin;
+  c.beginPath();
+  c.arc(16, 12 + bounce, 8, 0, Math.PI * 2);
+  c.fill();
+
+  // 头发
+  c.fillStyle = ch.hair;
+  c.beginPath();
+  c.arc(16, 10 + bounce, 8, Math.PI, 0);
+  c.fill();
+  c.fillRect(8, 8 + bounce, 16, 4);
+
+  // 眼睛
+  c.fillStyle = '#333';
+  if (dir === 0) { // 下
+    c.fillRect(12, 12 + bounce, 2, 3);
+    c.fillRect(18, 12 + bounce, 2, 3);
+  } else if (dir === 2) { // 上
+    // 背面不画眼睛
+  } else if (dir === 1) { // 左
+    c.fillRect(10, 12 + bounce, 2, 3);
+  } else { // 右
+    c.fillRect(20, 12 + bounce, 2, 3);
+  }
+
+  // 嘴
+  if (dir !== 2) {
+    c.fillStyle = '#c0392b';
+    c.fillRect(14, 16 + bounce, 4, 1);
   }
 }
-loadJobs();
+
+// ==================== 巨龙绘制 ====================
+function drawDragon(c, frame) {
+  const breath = Math.sin(frame * 0.05) * 2;
+
+  // 身体
+  c.fillStyle = '#c0392b';
+  c.beginPath();
+  c.ellipse(16, 18 + breath * 0.3, 12, 10, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // 头
+  c.fillStyle = '#e74c3c';
+  c.beginPath();
+  c.ellipse(16, 8 + breath * 0.5, 8, 7, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // 角
+  c.fillStyle = '#8b6914';
+  c.beginPath();
+  c.moveTo(10, 4 + breath * 0.5);
+  c.lineTo(7, -2 + breath * 0.5);
+  c.lineTo(13, 2 + breath * 0.5);
+  c.fill();
+  c.beginPath();
+  c.moveTo(22, 4 + breath * 0.5);
+  c.lineTo(25, -2 + breath * 0.5);
+  c.lineTo(19, 2 + breath * 0.5);
+  c.fill();
+
+  // 眼睛
+  c.fillStyle = '#f1c40f';
+  c.beginPath();
+  c.arc(12, 7 + breath * 0.5, 2.5, 0, Math.PI * 2);
+  c.fill();
+  c.beginPath();
+  c.arc(20, 7 + breath * 0.5, 2.5, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = '#111';
+  c.fillRect(11.5, 6.5 + breath * 0.5, 1.5, 2);
+  c.fillRect(19.5, 6.5 + breath * 0.5, 1.5, 2);
+
+  // 翅膀
+  c.fillStyle = 'rgba(192, 57, 43, 0.7)';
+  const wingAng = Math.sin(frame * 0.1) * 0.3;
+  c.beginPath();
+  c.moveTo(4, 14 + breath * 0.3);
+  c.lineTo(-8, 6 + breath - wingAng * 10);
+  c.lineTo(-4, 20 + breath * 0.3);
+  c.fill();
+  c.beginPath();
+  c.moveTo(28, 14 + breath * 0.3);
+  c.lineTo(40, 6 + breath - wingAng * 10);
+  c.lineTo(36, 20 + breath * 0.3);
+  c.fill();
+
+  // 火焰呼吸
+  if (Math.sin(frame * 0.03) > 0.5) {
+    const fIntensity = (Math.sin(frame * 0.03) - 0.5) * 2;
+    c.fillStyle = `rgba(243, 156, 18, ${fIntensity * 0.6})`;
+    c.beginPath();
+    c.moveTo(12, 12 + breath * 0.5);
+    c.lineTo(16, 20 + fIntensity * 8);
+    c.lineTo(20, 12 + breath * 0.5);
+    c.fill();
+  }
+
+  // 尾巴
+  c.fillStyle = '#c0392b';
+  c.beginPath();
+  c.moveTo(14, 26 + breath * 0.3);
+  c.quadraticCurveTo(8, 32 + breath, 4 + Math.sin(frame * 0.05) * 3, 30 + breath * 0.2);
+  c.lineTo(6, 28 + breath * 0.3);
+  c.quadraticCurveTo(10, 30 + breath, 18, 26 + breath * 0.3);
+  c.fill();
+}
+
+// ==================== 游戏状态 ====================
+let gameState = {
+  level: 0, // 0=标题, 1=森林, 2=拼图动画, 3=城堡, 4=胜利
+  forestData: null,
+  castleData: null,
+  characters: [],
+  activeChar: 0,
+  fragments: [false, false, false],
+  camera: { x: 0, y: 0 },
+  dragon: { x: 0, y: 0, nextMove: 0, visible: false, blockedTiles: [] },
+  frame: 0,
+  message: '',
+  messageTimer: 0,
+  showMap: false,
+  puzzlePhase: 0,
+  puzzleTimer: 0,
+  victoryTimer: 0,
+  treasurePos: { x: 0, y: 0 },
+  keys: {},
+  lastMoveTime: 0,
+  moveDelay: 150
+};
+
+function initCharacters(startX, startY) {
+  gameState.characters = CHAR_COLORS.map((_, i) => ({
+    x: startX,
+    y: startY,
+    dir: 0,
+    moving: false,
+    moveFrame: 0
+  }));
+}
+
+// ==================== 关卡初始化 ====================
+function startLevel1() {
+  gameState.level = 1;
+  gameState.forestData = generateForestMaze();
+  gameState.fragments = [false, false, false];
+  gameState.activeChar = 0;
+  initCharacters(gameState.forestData.startX, gameState.forestData.startY);
+  // 偏移角色位置使它们不重叠
+  gameState.characters[1].x = gameState.forestData.startX;
+  gameState.characters[1].y = gameState.forestData.startY - 1;
+  gameState.characters[2].x = gameState.forestData.startX + 1;
+  gameState.characters[2].y = gameState.forestData.startY;
+  showMessage('欢迎来到魔法森林！按 1/2/3 切换角色，收集3块地图碎片！');
+}
+
+function startLevel2() {
+  gameState.level = 3;
+  gameState.castleData = generateCastleMaze();
+  const sd = gameState.castleData;
+  initCharacters(sd.startX, sd.startY);
+  gameState.activeChar = 0;
+
+  // 找到宝藏位置
+  for (let y = 0; y < sd.height; y++) {
+    for (let x = 0; x < sd.width; x++) {
+      if (sd.map[y][x] === T.TREASURE) {
+        gameState.treasurePos = { x, y };
+      }
+    }
+  }
+
+  // 初始化巨龙位置
+  placeDragon();
+  gameState.dragon.nextMove = Date.now() + DRAGON_MOVE_INTERVAL;
+  gameState.dragon.visible = true;
+
+  showMessage('进入巨龙城堡！按 M 查看藏宝图。小心巨龙！');
+}
+
+function placeDragon() {
+  const sd = gameState.castleData;
+  if (!sd || sd.corridors.length === 0) return;
+
+  // 选择一个离玩家足够远的走廊位置
+  const char = gameState.characters[0];
+  const validSpots = sd.corridors.filter(c => {
+    const dist = Math.abs(c.x - char.x) + Math.abs(c.y - char.y);
+    return dist > 5 && sd.map[c.y][c.x] !== T.TREASURE;
+  });
+
+  if (validSpots.length === 0) return;
+  const spot = validSpots[Math.floor(Math.random() * validSpots.length)];
+  gameState.dragon.x = spot.x;
+  gameState.dragon.y = spot.y;
+
+  // 巨龙阻挡周围的格子
+  gameState.dragon.blockedTiles = [];
+  gameState.dragon.blockedTiles.push({x: spot.x, y: spot.y});
+  for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+    const nx = spot.x + dx, ny = spot.y + dy;
+    if (nx >= 0 && nx < sd.width && ny >= 0 && ny < sd.height) {
+      const t = sd.map[ny][nx];
+      if (t !== T.WALL && t !== T.TREASURE) {
+        gameState.dragon.blockedTiles.push({x: nx, y: ny});
+      }
+    }
+  }
+}
+
+// ==================== 移动与碰撞 ====================
+function canMove(x, y, level) {
+  let mapData, w, h;
+  if (level === 1) {
+    mapData = gameState.forestData;
+  } else {
+    mapData = gameState.castleData;
+  }
+  if (!mapData) return false;
+  w = mapData.width; h = mapData.height;
+
+  if (x < 0 || x >= w || y < 0 || y >= h) return false;
+  const tile = mapData.map[y][x];
+
+  // 不能走的瓦片
+  if (tile === T.TREE || tile === T.WALL || tile === T.WATER || tile === T.PILLAR || tile === T.BOOKSHELF) return false;
+
+  // 城堡关卡检查巨龙阻挡
+  if (level === 3 && gameState.dragon.visible) {
+    for (const bt of gameState.dragon.blockedTiles) {
+      if (bt.x === x && bt.y === y) return false;
+    }
+  }
+
+  // 检查其他角色的位置（第一关，角色不能重叠）
+  if (level === 1) {
+    for (let i = 0; i < gameState.characters.length; i++) {
+      if (i !== gameState.activeChar) {
+        if (gameState.characters[i].x === x && gameState.characters[i].y === y) return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+function moveCharacter(dirX, dirY) {
+  const now = Date.now();
+  if (now - gameState.lastMoveTime < gameState.moveDelay) return;
+
+  const level = gameState.level;
+
+  if (level === 1) {
+    // 第一关：只移动当前选中角色
+    const ch = gameState.characters[gameState.activeChar];
+    const nx = ch.x + dirX;
+    const ny = ch.y + dirY;
+
+    // 设置朝向
+    if (dirY > 0) ch.dir = 0;
+    else if (dirX < 0) ch.dir = 1;
+    else if (dirY < 0) ch.dir = 2;
+    else if (dirX > 0) ch.dir = 3;
+
+    if (canMove(nx, ny, level)) {
+      ch.x = nx;
+      ch.y = ny;
+      ch.moveFrame++;
+      checkForestPickup(gameState.activeChar);
+    }
+  } else if (level === 3) {
+    // 第二关：三个角色一起移动
+    const ch = gameState.characters[0];
+    const nx = ch.x + dirX;
+    const ny = ch.y + dirY;
+
+    if (dirY > 0) ch.dir = 0;
+    else if (dirX < 0) ch.dir = 1;
+    else if (dirY < 0) ch.dir = 2;
+    else if (dirX > 0) ch.dir = 3;
+
+    if (canMove(nx, ny, level)) {
+      for (const c of gameState.characters) {
+        c.x = nx;
+        c.y = ny;
+        c.dir = ch.dir;
+        c.moveFrame++;
+      }
+      checkCastlePickup();
+    }
+  }
+
+  gameState.lastMoveTime = now;
+}
+
+function checkForestPickup(charIdx) {
+  const ch = gameState.characters[charIdx];
+  const tile = gameState.forestData.map[ch.y][ch.x];
+
+  if (tile === T.FRAGMENT_A && !gameState.fragments[0]) {
+    gameState.fragments[0] = true;
+    gameState.forestData.map[ch.y][ch.x] = T.PATH;
+    showMessage(`${CHAR_COLORS[charIdx].name}找到了红色地图碎片！`);
+    checkAllFragments();
+  } else if (tile === T.FRAGMENT_B && !gameState.fragments[1]) {
+    gameState.fragments[1] = true;
+    gameState.forestData.map[ch.y][ch.x] = T.PATH;
+    showMessage(`${CHAR_COLORS[charIdx].name}找到了蓝色地图碎片！`);
+    checkAllFragments();
+  } else if (tile === T.FRAGMENT_C && !gameState.fragments[2]) {
+    gameState.fragments[2] = true;
+    gameState.forestData.map[ch.y][ch.x] = T.PATH;
+    showMessage(`${CHAR_COLORS[charIdx].name}找到了绿色地图碎片！`);
+    checkAllFragments();
+  }
+}
+
+function checkAllFragments() {
+  if (gameState.fragments[0] && gameState.fragments[1] && gameState.fragments[2]) {
+    gameState.level = 2;
+    gameState.puzzlePhase = 0;
+    gameState.puzzleTimer = 0;
+    showMessage('三块地图碎片收集完毕！正在拼合藏宝图...');
+  }
+}
+
+function checkCastlePickup() {
+  const ch = gameState.characters[0];
+  const tile = gameState.castleData.map[ch.y][ch.x];
+  if (tile === T.TREASURE) {
+    gameState.level = 4;
+    gameState.victoryTimer = 0;
+    showMessage('恭喜！你们找到了传说中的宝藏！');
+  }
+}
+
+// ==================== 消息系统 ====================
+function showMessage(msg) {
+  gameState.message = msg;
+  gameState.messageTimer = 300; // 约5秒
+}
+
+// ==================== 输入处理 ====================
+document.addEventListener('keydown', e => {
+  gameState.keys[e.key] = true;
+
+  if (gameState.level === 0) {
+    if (e.key === ' ' || e.key === 'Enter') {
+      startLevel1();
+    }
+    return;
+  }
+
+  if (gameState.level === 2) {
+    if (e.key === ' ' || e.key === 'Enter') {
+      if (gameState.puzzlePhase >= 3) {
+        startLevel2();
+      }
+    }
+    return;
+  }
+
+  if (gameState.level === 4) {
+    return;
+  }
+
+  // 切换角色（第一关）
+  if (gameState.level === 1) {
+    if (e.key === '1') { gameState.activeChar = 0; showMessage(`切换到 ${CHAR_COLORS[0].name}`); }
+    if (e.key === '2') { gameState.activeChar = 1; showMessage(`切换到 ${CHAR_COLORS[1].name}`); }
+    if (e.key === '3') { gameState.activeChar = 2; showMessage(`切换到 ${CHAR_COLORS[2].name}`); }
+  }
+
+  // 查看藏宝图（第二关）
+  if (e.key === 'm' || e.key === 'M') {
+    if (gameState.level === 3) {
+      gameState.showMap = !gameState.showMap;
+    }
+  }
+
+  // 移动
+  if (e.key === 'ArrowUp') moveCharacter(0, -1);
+  if (e.key === 'ArrowDown') moveCharacter(0, 1);
+  if (e.key === 'ArrowLeft') moveCharacter(-1, 0);
+  if (e.key === 'ArrowRight') moveCharacter(1, 0);
+
+  e.preventDefault();
+});
+
+document.addEventListener('keyup', e => {
+  gameState.keys[e.key] = false;
+});
+
+// 持续按键移动
+function handleContinuousInput() {
+  if (gameState.level !== 1 && gameState.level !== 3) return;
+  if (gameState.keys['ArrowUp']) moveCharacter(0, -1);
+  else if (gameState.keys['ArrowDown']) moveCharacter(0, 1);
+  else if (gameState.keys['ArrowLeft']) moveCharacter(-1, 0);
+  else if (gameState.keys['ArrowRight']) moveCharacter(1, 0);
+}
+
+// ==================== 触屏输入处理 ====================
+(function initTouchControls() {
+  // 通用：模拟按下键
+  function simulateKey(key) {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key }));
+  }
+  function simulateKeyUp(key) {
+    document.dispatchEvent(new KeyboardEvent('keyup', { key }));
+  }
+
+  // --- 方向键：支持按住持续移动 ---
+  let dpadInterval = null;
+  let dpadActiveKey = null;
+
+  function dpadStart(key) {
+    if (dpadActiveKey === key) return;
+    dpadStop();
+    dpadActiveKey = key;
+    simulateKey(key); // 立即触发一次
+    dpadInterval = setInterval(() => simulateKey(key), 130);
+  }
+  function dpadStop() {
+    if (dpadActiveKey) simulateKeyUp(dpadActiveKey);
+    dpadActiveKey = null;
+    if (dpadInterval) { clearInterval(dpadInterval); dpadInterval = null; }
+  }
+
+  const dpadMap = {
+    'dpad-up':    'ArrowUp',
+    'dpad-down':  'ArrowDown',
+    'dpad-left':  'ArrowLeft',
+    'dpad-right': 'ArrowRight'
+  };
+
+  Object.entries(dpadMap).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('touchstart', e => { e.preventDefault(); el.classList.add('pressed'); dpadStart(key); }, { passive: false });
+    el.addEventListener('touchend',   e => { e.preventDefault(); el.classList.remove('pressed'); dpadStop(); }, { passive: false });
+    el.addEventListener('touchcancel',e => { el.classList.remove('pressed'); dpadStop(); });
+    // 防止手指滑出按钮后卡住
+    el.addEventListener('touchmove', e => {
+      const touch = e.touches[0];
+      const rect = el.getBoundingClientRect();
+      if (touch.clientX < rect.left || touch.clientX > rect.right ||
+          touch.clientY < rect.top  || touch.clientY > rect.bottom) {
+        el.classList.remove('pressed');
+        dpadStop();
+      }
+    }, { passive: false });
+  });
+
+  // --- 确认按钮 ---
+  const btnConfirm = document.getElementById('btn-confirm');
+  if (btnConfirm) {
+    btnConfirm.addEventListener('touchstart', e => {
+      e.preventDefault();
+      btnConfirm.classList.add('pressed');
+      simulateKey(' ');
+    }, { passive: false });
+    btnConfirm.addEventListener('touchend', e => {
+      e.preventDefault();
+      btnConfirm.classList.remove('pressed');
+      simulateKeyUp(' ');
+    }, { passive: false });
+  }
+
+  // --- 藏宝图按钮 ---
+  const btnMap = document.getElementById('btn-map');
+  if (btnMap) {
+    btnMap.addEventListener('touchstart', e => {
+      e.preventDefault();
+      btnMap.classList.add('pressed');
+      simulateKey('m');
+    }, { passive: false });
+    btnMap.addEventListener('touchend', e => {
+      e.preventDefault();
+      btnMap.classList.remove('pressed');
+      simulateKeyUp('m');
+    }, { passive: false });
+  }
+
+  // --- 角色切换按钮 ---
+  ['char1','char2','char3'].forEach((id, idx) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('touchstart', e => {
+      e.preventDefault();
+      simulateKey(String(idx + 1));
+      // 更新高亮
+      document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+    }, { passive: false });
+  });
+
+  // --- 画布点击作为确认（标题/过渡画面） ---
+  canvas.addEventListener('touchstart', e => {
+    if (gameState.level === 0 || (gameState.level === 2 && gameState.puzzlePhase >= 3)) {
+      e.preventDefault();
+      simulateKey(' ');
+      setTimeout(() => simulateKeyUp(' '), 100);
+    }
+  }, { passive: false });
+
+  // 防止移动端页面弹性滚动
+  document.addEventListener('touchmove', e => {
+    if (e.target.closest('#touch-controls') || e.target === canvas) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+})();
+
+// 让角色切换按钮的高亮跟随键盘切换
+(function syncCharButtons() {
+  const origShowMessage = showMessage;
+  // 没有必要劫持函数，用轮询同步即可
+  setInterval(() => {
+    document.querySelectorAll('.char-btn').forEach((b, i) => {
+      b.classList.toggle('active', i === gameState.activeChar);
+    });
+    // 第二关隐藏角色切换按钮
+    const cs = document.getElementById('char-switch');
+    if (cs) cs.style.display = (gameState.level === 1) ? 'flex' : 'none';
+  }, 200);
+})();
+
+// ==================== 渲染 ====================
+function updateCamera() {
+  const ch = gameState.characters[gameState.activeChar];
+  const targetX = ch.x * TILE - CANVAS_W / 2 + TILE / 2;
+  const targetY = ch.y * TILE - CANVAS_H / 2 + TILE / 2;
+  gameState.camera.x += (targetX - gameState.camera.x) * 0.1;
+  gameState.camera.y += (targetY - gameState.camera.y) * 0.1;
+}
+
+function renderMap(mapData) {
+  const cam = gameState.camera;
+  const startCol = Math.max(0, Math.floor(cam.x / TILE));
+  const startRow = Math.max(0, Math.floor(cam.y / TILE));
+  const endCol = Math.min(mapData.width, startCol + VIEWPORT_COLS + 1);
+  const endRow = Math.min(mapData.height, startRow + VIEWPORT_ROWS + 1);
+
+  for (let y = startRow; y < endRow; y++) {
+    for (let x = startCol; x < endCol; x++) {
+      const tile = mapData.map[y][x];
+      const screenX = Math.floor(x * TILE - cam.x);
+      const screenY = Math.floor(y * TILE - cam.y);
+
+      const buf = drawTileToBuffer(tile, gameState.frame);
+      ctx.drawImage(buf, screenX, screenY);
+    }
+  }
+}
+
+function renderCharacters() {
+  const cam = gameState.camera;
+
+  // 在第二关，所有角色在同一位置，稍微偏移绘制
+  if (gameState.level === 3) {
+    const ch = gameState.characters[0];
+    const offsets = [[0, 0], [-6, -4], [6, -4]];
+    for (let i = 2; i >= 0; i--) {
+      const screenX = Math.floor(ch.x * TILE - cam.x) + offsets[i][0];
+      const screenY = Math.floor(ch.y * TILE - cam.y) + offsets[i][1];
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = TILE; tempCanvas.height = TILE;
+      drawCharacter(tempCanvas.getContext('2d'), i, ch.dir, ch.moveFrame, i === 0);
+      ctx.drawImage(tempCanvas, 0, 0);
+      ctx.restore();
+    }
+  } else {
+    // 第一关，独立绘制
+    for (let i = 0; i < gameState.characters.length; i++) {
+      const ch = gameState.characters[i];
+      const screenX = Math.floor(ch.x * TILE - cam.x);
+      const screenY = Math.floor(ch.y * TILE - cam.y);
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = TILE; tempCanvas.height = TILE;
+      drawCharacter(tempCanvas.getContext('2d'), i, ch.dir, ch.moveFrame, i === gameState.activeChar);
+      ctx.drawImage(tempCanvas, 0, 0);
+      ctx.restore();
+    }
+  }
+}
+
+function renderDragon() {
+  if (gameState.level !== 3 || !gameState.dragon.visible) return;
+
+  const cam = gameState.camera;
+  const screenX = Math.floor(gameState.dragon.x * TILE - cam.x);
+  const screenY = Math.floor(gameState.dragon.y * TILE - cam.y);
+
+  // 检查是否在视口内
+  if (screenX < -TILE * 2 || screenX > CANVAS_W + TILE || screenY < -TILE * 2 || screenY > CANVAS_H + TILE) return;
+
+  ctx.save();
+  ctx.translate(screenX - 4, screenY - 8);
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = TILE + 8; tempCanvas.height = TILE + 8;
+  const tc = tempCanvas.getContext('2d');
+  tc.translate(4, 8);
+  drawDragon(tc, gameState.frame);
+  ctx.drawImage(tempCanvas, 0, 0);
+  ctx.restore();
+
+  // 绘制阻挡区域提示
+  ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+  for (const bt of gameState.dragon.blockedTiles) {
+    const bx = Math.floor(bt.x * TILE - cam.x);
+    const by = Math.floor(bt.y * TILE - cam.y);
+    ctx.fillRect(bx, by, TILE, TILE);
+  }
+}
+
+function renderUI() {
+  const gs = gameState;
+
+  // 消息框
+  if (gs.messageTimer > 0) {
+    const msgAlpha = Math.min(1, gs.messageTimer / 30);
+    ctx.font = '14px "Microsoft YaHei", sans-serif';
+    const msgW = Math.min(CANVAS_W - 40, ctx.measureText(gs.message).width + 40);
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * msgAlpha})`;
+    ctx.fillRect((CANVAS_W - msgW) / 2, CANVAS_H - 70, msgW, 40);
+    ctx.strokeStyle = `rgba(255, 215, 0, ${msgAlpha})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect((CANVAS_W - msgW) / 2, CANVAS_H - 70, msgW, 40);
+    ctx.fillStyle = `rgba(255, 255, 255, ${msgAlpha})`;
+    ctx.textAlign = 'center';
+    ctx.fillText(gs.message, CANVAS_W / 2, CANVAS_H - 45);
+    ctx.textAlign = 'left';
+  }
+
+  // 第一关 UI
+  if (gs.level === 1) {
+    // 角色指示器
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(10, 10, 200, 30);
+    ctx.font = '13px "Microsoft YaHei", sans-serif';
+    for (let i = 0; i < 3; i++) {
+      const isActive = i === gs.activeChar;
+      ctx.fillStyle = isActive ? '#ffd700' : '#888';
+      ctx.fillText(`[${i+1}] ${CHAR_COLORS[i].name}`, 18 + i * 66, 30);
+      if (isActive) {
+        ctx.fillRect(18 + i * 66, 32, 50, 2);
+      }
+    }
+
+    // 碎片收集状态
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(10, 45, 200, 25);
+    ctx.font = '12px "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#ddd';
+    ctx.fillText('地图碎片: ', 18, 62);
+    const fragCols = ['#e74c3c', '#3498db', '#2ecc71'];
+    const fragNames = ['红', '蓝', '绿'];
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = gs.fragments[i] ? fragCols[i] : '#555';
+      ctx.fillText(gs.fragments[i] ? `[${fragNames[i]}✓]` : `[${fragNames[i]}?]`, 85 + i * 40, 62);
+    }
+
+    // 小地图
+    renderMinimap(gs.forestData);
+  }
+
+  // 第二关 UI
+  if (gs.level === 3) {
+    // 巨龙计时器
+    const timeLeft = Math.max(0, gs.dragon.nextMove - Date.now());
+    const minutes = Math.floor(timeLeft / 60000);
+    const seconds = Math.floor((timeLeft % 60000) / 1000);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(10, 10, 220, 25);
+    ctx.font = '12px "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillText(`🐉 巨龙移动倒计时: ${minutes}:${seconds.toString().padStart(2, '0')}`, 18, 27);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(10, 40, 220, 20);
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('按 M 查看藏宝图', 18, 54);
+
+    // 小地图
+    renderMinimap(gs.castleData);
+  }
+}
+
+function renderMinimap(mapData) {
+  if (!mapData) return;
+  const mmScale = 3;
+  const mmW = mapData.width * mmScale;
+  const mmH = mapData.height * mmScale;
+  const mmX = CANVAS_W - mmW - 10;
+  const mmY = 10;
+
+  // 背景
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+
+  for (let y = 0; y < mapData.height; y++) {
+    for (let x = 0; x < mapData.width; x++) {
+      const tile = mapData.map[y][x];
+      if (tile === T.TREE || tile === T.WALL) {
+        ctx.fillStyle = gameState.level === 1 ? '#1a3a1a' : '#3a3a4a';
+      } else if (tile === T.WATER) {
+        ctx.fillStyle = '#1a3a6a';
+      } else if (tile === T.FRAGMENT_A || tile === T.FRAGMENT_B || tile === T.FRAGMENT_C) {
+        ctx.fillStyle = '#ffd700';
+      } else if (tile === T.TREASURE) {
+        ctx.fillStyle = '#ffd700';
+      } else {
+        ctx.fillStyle = gameState.level === 1 ? '#3a5a3a' : '#5a5a6a';
+      }
+      ctx.fillRect(mmX + x * mmScale, mmY + y * mmScale, mmScale, mmScale);
+    }
+  }
+
+  // 角色位置
+  for (let i = 0; i < gameState.characters.length; i++) {
+    const ch = gameState.characters[i];
+    const colors = ['#e74c3c', '#f39c12', '#8e44ad'];
+    ctx.fillStyle = colors[i];
+    ctx.fillRect(mmX + ch.x * mmScale - 1, mmY + ch.y * mmScale - 1, mmScale + 2, mmScale + 2);
+  }
+
+  // 巨龙位置
+  if (gameState.level === 3 && gameState.dragon.visible) {
+    ctx.fillStyle = gameState.frame % 30 < 15 ? '#ff0000' : '#ff6600';
+    ctx.fillRect(mmX + gameState.dragon.x * mmScale - 1, mmY + gameState.dragon.y * mmScale - 1, mmScale + 2, mmScale + 2);
+  }
+}
+
+// ==================== 藏宝图显示 ====================
+function renderTreasureMap() {
+  if (!gameState.showMap || gameState.level !== 3) return;
+
+  // 半透明背景
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // 羊皮纸背景
+  const mw = 400, mh = 300;
+  const mx = (CANVAS_W - mw) / 2, my = (CANVAS_H - mh) / 2;
+
+  ctx.fillStyle = '#d4b896';
+  ctx.fillRect(mx, my, mw, mh);
+  ctx.fillStyle = '#c4a876';
+  ctx.fillRect(mx + 5, my + 5, mw - 10, mh - 10);
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(mx + 5, my + 5, mw - 10, mh - 10);
+
+  // 标题
+  ctx.fillStyle = '#4a2810';
+  ctx.font = 'bold 20px "Microsoft YaHei", serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('~ 藏宝图 ~', CANVAS_W / 2, my + 35);
+
+  // 简化版城堡地图
+  const sd = gameState.castleData;
+  if (!sd) return;
+  const scale = Math.min((mw - 60) / sd.width, (mh - 80) / sd.height);
+  const mapOffX = mx + (mw - sd.width * scale) / 2;
+  const mapOffY = my + 50;
+
+  for (let y = 0; y < sd.height; y++) {
+    for (let x = 0; x < sd.width; x++) {
+      const tile = sd.map[y][x];
+      if (tile === T.WALL) {
+        ctx.fillStyle = '#7a6a5a';
+      } else if (tile === T.TREASURE) {
+        ctx.fillStyle = '#ffd700';
+      } else {
+        ctx.fillStyle = '#c4a876';
+      }
+      ctx.fillRect(mapOffX + x * scale, mapOffY + y * scale, scale, scale);
+    }
+  }
+
+  // 宝藏标记
+  ctx.fillStyle = '#e74c3c';
+  ctx.font = 'bold 14px "Microsoft YaHei", serif';
+  ctx.fillText('X', mapOffX + gameState.treasurePos.x * scale + scale / 2, mapOffY + gameState.treasurePos.y * scale + scale / 2 + 5);
+
+  // 玩家位置
+  const ch = gameState.characters[0];
+  ctx.fillStyle = '#3498db';
+  ctx.beginPath();
+  ctx.arc(mapOffX + ch.x * scale + scale / 2, mapOffY + ch.y * scale + scale / 2, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 提示
+  ctx.fillStyle = '#4a2810';
+  ctx.font = '12px "Microsoft YaHei", sans-serif';
+  ctx.fillText('红色 X = 宝藏位置 | 蓝点 = 你的位置', CANVAS_W / 2, my + mh - 15);
+  ctx.fillText('按 M 关闭藏宝图', CANVAS_W / 2, my + mh - 2);
+
+  ctx.textAlign = 'left';
+}
+
+// ==================== 拼图动画 ====================
+function renderPuzzle() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  const centerX = CANVAS_W / 2;
+  const centerY = CANVAS_H / 2 - 20;
+
+  // 标题
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 24px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('拼合藏宝图', centerX, 60);
+
+  // 三块碎片逐步拼合
+  const fragSize = 80;
+  const targetPositions = [
+    { x: centerX - fragSize, y: centerY - fragSize / 2 },
+    { x: centerX, y: centerY - fragSize / 2 },
+    { x: centerX - fragSize / 2, y: centerY + fragSize / 2 - 20 }
+  ];
+
+  const startPositions = [
+    { x: 100, y: 400 },
+    { x: centerX, y: 400 },
+    { x: CANVAS_W - 100, y: 400 }
+  ];
+
+  const fragColors = ['#e74c3c', '#3498db', '#2ecc71'];
+  const fragLabels = ['红', '蓝', '绿'];
+
+  for (let i = 0; i < 3; i++) {
+    let progress;
+    if (gameState.puzzlePhase > i) {
+      progress = 1;
+    } else if (gameState.puzzlePhase === i) {
+      progress = Math.min(1, gameState.puzzleTimer / 60);
+    } else {
+      progress = 0;
+    }
+
+    const px = startPositions[i].x + (targetPositions[i].x - startPositions[i].x) * progress;
+    const py = startPositions[i].y + (targetPositions[i].y - startPositions[i].y) * progress;
+
+    // 碎片
+    ctx.fillStyle = '#d4b896';
+    ctx.fillRect(px - fragSize / 2, py - fragSize / 2, fragSize, fragSize);
+    ctx.strokeStyle = fragColors[i];
+    ctx.lineWidth = 3;
+    ctx.strokeRect(px - fragSize / 2, py - fragSize / 2, fragSize, fragSize);
+
+    // 碎片内容（简化地图线条）
+    ctx.strokeStyle = '#8b6914';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let j = 0; j < 5; j++) {
+      const lx = px - fragSize / 2 + 10 + j * 15;
+      const ly = py - fragSize / 2 + 10;
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx + Math.sin(j) * 10, ly + 60);
+    }
+    ctx.stroke();
+
+    // 碎片标记
+    ctx.fillStyle = fragColors[i];
+    ctx.font = 'bold 16px "Microsoft YaHei", sans-serif';
+    ctx.fillText(fragLabels[i], px, py + 5);
+  }
+
+  // 完成提示
+  if (gameState.puzzlePhase >= 3) {
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 18px "Microsoft YaHei", sans-serif';
+    ctx.fillText('藏宝图拼合完成！', centerX, centerY + 100);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '14px "Microsoft YaHei", sans-serif';
+    ctx.fillText('按空格键进入巨龙城堡', centerX, centerY + 130);
+  }
+
+  ctx.textAlign = 'left';
+}
+
+// ==================== 标题画面 ====================
+function renderTitle() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // 星星背景
+  for (let i = 0; i < 50; i++) {
+    const sx = (i * 137 + gameState.frame * 0.1) % CANVAS_W;
+    const sy = (i * 89 + 20) % CANVAS_H;
+    const bright = 0.3 + Math.sin(gameState.frame * 0.02 + i) * 0.3;
+    ctx.fillStyle = `rgba(255, 255, 255, ${bright})`;
+    ctx.fillRect(sx, sy, 2, 2);
+  }
+
+  // 标题
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 36px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('魔法森林寻宝记', CANVAS_W / 2, 120);
+
+  // 副标题
+  ctx.fillStyle = '#aaa';
+  ctx.font = '16px "Microsoft YaHei", sans-serif';
+  ctx.fillText('三个小朋友的冒险之旅', CANVAS_W / 2, 160);
+
+  // 角色展示
+  for (let i = 0; i < 3; i++) {
+    const cx = CANVAS_W / 2 - 80 + i * 80;
+    const cy = 220;
+    ctx.save();
+    ctx.translate(cx - TILE / 2, cy - TILE / 2);
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = TILE; tempCanvas.height = TILE;
+    drawCharacter(tempCanvas.getContext('2d'), i, 0, gameState.frame, false);
+    ctx.drawImage(tempCanvas, 0, 0);
+    ctx.restore();
+    ctx.fillStyle = CHAR_COLORS[i].hair;
+    ctx.font = '14px "Microsoft YaHei", sans-serif';
+    ctx.fillText(CHAR_COLORS[i].name, cx, cy + 32);
+  }
+
+  // 游戏说明
+  ctx.fillStyle = '#888';
+  ctx.font = '13px "Microsoft YaHei", sans-serif';
+  const instructions = [
+    '第一关：在魔法森林迷宫中找到三块藏宝图碎片',
+    '第二关：进入巨龙城堡，根据藏宝图找到宝藏',
+    '',
+    '方向键移动 | 数字键1/2/3切换角色 | M查看藏宝图',
+  ];
+  instructions.forEach((line, i) => {
+    ctx.fillText(line, CANVAS_W / 2, 310 + i * 24);
+  });
+
+  // 开始提示
+  const startAlpha = 0.5 + Math.sin(gameState.frame * 0.05) * 0.5;
+  ctx.fillStyle = `rgba(255, 215, 0, ${startAlpha})`;
+  ctx.font = 'bold 20px "Microsoft YaHei", sans-serif';
+  ctx.fillText('按空格键开始游戏', CANVAS_W / 2, 430);
+
+  ctx.textAlign = 'left';
+}
+
+// ==================== 胜利画面 ====================
+function renderVictory() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // 金色粒子
+  for (let i = 0; i < 40; i++) {
+    const px = (i * 17 + gameState.frame * 0.5) % CANVAS_W;
+    const py = ((CANVAS_H - (i * 23 + gameState.frame * 0.8) % CANVAS_H) + CANVAS_H) % CANVAS_H;
+    const size = 2 + Math.sin(i + gameState.frame * 0.1) * 2;
+    ctx.fillStyle = `rgba(255, 215, 0, ${0.3 + Math.sin(i * 0.5 + gameState.frame * 0.05) * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(px, py, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.textAlign = 'center';
+
+  // 胜利文字
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 40px "Microsoft YaHei", sans-serif';
+  ctx.fillText('恭喜通关！', CANVAS_W / 2, 140);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '18px "Microsoft YaHei", sans-serif';
+  ctx.fillText('三位小朋友齐心协力', CANVAS_W / 2, 200);
+  ctx.fillText('成功找到了传说中的宝藏！', CANVAS_W / 2, 230);
+
+  // 角色庆祝
+  for (let i = 0; i < 3; i++) {
+    const cx = CANVAS_W / 2 - 80 + i * 80;
+    const cy = 300;
+    const jumpH = Math.abs(Math.sin(gameState.frame * 0.08 + i * 2)) * 20;
+    ctx.save();
+    ctx.translate(cx - TILE / 2, cy - TILE / 2 - jumpH);
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = TILE; tempCanvas.height = TILE;
+    drawCharacter(tempCanvas.getContext('2d'), i, 0, gameState.frame, false);
+    ctx.drawImage(tempCanvas, 0, 0);
+    ctx.restore();
+  }
+
+  // 宝箱
+  const chestY = 380;
+  ctx.save();
+  ctx.translate(CANVAS_W / 2 - TILE / 2, chestY);
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = TILE; tempCanvas.height = TILE;
+  drawTileToBuffer(T.TREASURE, gameState.frame);
+  ctx.drawImage(drawTileToBuffer(T.TREASURE, gameState.frame), 0, 0);
+  ctx.restore();
+
+  ctx.fillStyle = '#888';
+  ctx.font = '14px "Microsoft YaHei", sans-serif';
+  ctx.fillText('感谢游玩！', CANVAS_W / 2, 450);
+
+  ctx.textAlign = 'left';
+}
+
+// ==================== 主循环 ====================
+function gameLoop() {
+  gameState.frame++;
+
+  // 更新消息计时器
+  if (gameState.messageTimer > 0) gameState.messageTimer--;
+
+  // 清屏
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  switch (gameState.level) {
+    case 0: // 标题
+      renderTitle();
+      break;
+
+    case 1: // 魔法森林
+      handleContinuousInput();
+      updateCamera();
+      renderMap(gameState.forestData);
+      renderCharacters();
+      renderUI();
+      break;
+
+    case 2: // 拼图动画
+      gameState.puzzleTimer++;
+      if (gameState.puzzleTimer > 60 && gameState.puzzlePhase < 3) {
+        gameState.puzzlePhase++;
+        gameState.puzzleTimer = 0;
+      }
+      renderPuzzle();
+      break;
+
+    case 3: // 巨龙城堡
+      handleContinuousInput();
+      updateCamera();
+
+      // 巨龙移动计时
+      if (Date.now() > gameState.dragon.nextMove) {
+        placeDragon();
+        gameState.dragon.nextMove = Date.now() + DRAGON_MOVE_INTERVAL;
+        showMessage('巨龙移动了！小心新的位置！');
+      }
+
+      renderMap(gameState.castleData);
+      renderDragon();
+      renderCharacters();
+      renderUI();
+      renderTreasureMap();
+      break;
+
+    case 4: // 胜利
+      renderVictory();
+      break;
+  }
+
+  // 缓存大小受限于 ANIMATED_TILES * 60 + 静态瓦片，无需清理
+
+  requestAnimationFrame(gameLoop);
+}
+
+// 更新 UI overlay
+function updateUIOverlay() {
+  const el = document.getElementById('ui-overlay');
+  if (gameState.level === 0) {
+    el.innerHTML = '';
+  } else if (gameState.level === 1) {
+    el.innerHTML = '';
+  } else if (gameState.level === 3) {
+    el.innerHTML = '';
+  }
+}
+
+setInterval(updateUIOverlay, 500);
+
+// 启动游戏
+gameLoop();
 </script>
 </body>
 </html>
